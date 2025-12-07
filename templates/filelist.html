@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}} - 档案建档统计</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: "Microsoft YaHei", sans-serif; 
+            display: flex; 
+            height: 100vh; 
+        }
+        
+        /* 左侧导航 */
+        .sidebar { 
+            width: 220px; 
+            background-color: #2c3e50; 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .sidebar h3 { 
+            text-align: center; 
+            padding: 20px 0; 
+            border-bottom: 1px solid #34495e; 
+            margin: 0; 
+        }
+        .menu-item { 
+            padding: 15px 20px; 
+            color: #ecf0f1; 
+            text-decoration: none; 
+            display: block; 
+            border-bottom: 1px solid #34495e; 
+        }
+        .menu-item:hover { 
+            background-color: #34495e; 
+        }
+        .menu-item.active { 
+            background-color: #3498db; 
+        }
+
+        /* 右侧内容 */
+        .content { 
+            flex: 1; 
+            padding: 20px; 
+            overflow-y: auto; 
+            background-color: #f5f6fa; 
+        }
+        
+        /* 搜索/操作区 */
+        .search-container { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 5px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            margin-bottom: 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+        }
+        .search-form { 
+            display: flex; 
+            align-items: center; 
+        }
+        .search-form input, 
+        .search-form button, 
+        .action-btn { 
+            padding: 8px; 
+            border-radius: 4px; 
+            margin-right: 10px; 
+        }
+        .search-form input { 
+            border: 1px solid #ddd; 
+            width: 180px; 
+        }
+        
+        .search-form button { 
+            background-color: #3498db; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+        }
+        .search-form button:hover { 
+            background-color: #2980b9; 
+        }
+
+        /* 导入/导出按钮样式 */
+        .action-btn { 
+            text-decoration: none; 
+            color: white; 
+            border: none; 
+            cursor: pointer;
+            display: inline-block;
+            text-align: center;
+        }
+        .export-btn { 
+            background-color: #27ae60; 
+        }
+        .export-btn:hover { 
+            background-color: #229954; 
+        }
+        .import-btn { 
+            background-color: #f39c12; 
+        }
+        .import-btn:hover { 
+            background-color: #e67e22; 
+        }
+        .template-btn { 
+            background-color: #3498db; 
+        }
+        .template-btn:hover { 
+            background-color: #2980b9; 
+        }
+
+        /* 表格 */
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            background: white; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+        }
+        th, td { 
+            padding: 12px 15px; 
+            text-align: left; 
+            border-bottom: 1px solid #eee; 
+            font-size: 14px; 
+        }
+        th { 
+            background-color: #f8f9fa; 
+            font-weight: 600; 
+            color: #2c3e50; 
+        }
+        tr:hover { 
+            background-color: #f1f1f1; 
+        }
+
+        /* 分页 */
+        .pagination { 
+            margin-top: 20px; 
+            display: flex; 
+            justify-content: flex-end; 
+            align-items: center; 
+        }
+        .page-btn { 
+            padding: 5px 15px; 
+            border: 1px solid #ddd; 
+            background: white; 
+            text-decoration: none; 
+            color: #333; 
+            margin-left: 5px; 
+            border-radius: 4px; 
+        }
+        .page-btn:hover { 
+            background-color: #f8f9fa; 
+        }
+        .page-info { 
+            margin-right: 15px; 
+            color: #666; 
+        }
+
+        /* 底部操作区 */
+        .bottom-actions {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+    </style>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 从 Go 模板中获取传递的参数
+        var msg = '{{.ImportMessage}}';
+        var count = {{.ImportCount}};
+
+        if (msg === 'ImportSuccess' && count > 0) {
+            alert('导入成功！共导入 ' + count + ' 条数据。');
+            
+            // 清除 URL 中的参数，防止刷新重复弹窗
+            if (window.history.replaceState) {
+                var url = new URL(window.location.href);
+                url.searchParams.delete('message');
+                url.searchParams.delete('count');
+                window.history.replaceState({path:url.href}, '', url.href);
+            }
+        }
+    });
+    </script>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h3>档案建档统计</h3>
+        <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
+        <a href="/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+    </div>
+
+    <div class="content">
+        
+        <!-- 搜索和操作区 -->
+        <div class="search-container">
+            
+            <form class="search-form" action="/filelist" method="GET">
+                <input type="text" name="device_code" placeholder="输入设备编码" value="{{.SearchCode}}">
+                <input type="text" name="device_name" placeholder="输入设备名称" value="{{.SearchName}}">
+                <button type="submit">查询</button>
+            </form>
+
+            <div class="search-form">
+                <a href="/filelist/download-template" class="action-btn template-btn">下载导入模板</a>
+                <a href="/filelist/export?device_code={{.SearchCode}}&device_name={{.SearchName}}" class="action-btn export-btn">导出 XLSX</a>
+                
+                <form action="/filelist/import" method="POST" enctype="multipart/form-data" style="display: inline-flex; align-items: center; margin: 0;">
+                    <input type="file" name="upload_file" accept=".xlsx,.xls" required style="border: none; margin-right: 10px;">
+                    <button type="submit" class="action-btn import-btn">导入建档</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <table>
+            <thead>
+                <tr>
+                    <th>自增主键/序号</th>
+                    <th>设备编码</th>
+                    <th>设备名称</th>
+                    <th>行政区划编码</th>
+                    <th>管理单位</th>
+                    <th>维护单位</th>
+                    <th>更新时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .List}}
+                <tr>
+                    <td>{{.ID}}</td>
+                    <td>{{.DeviceCode}}</td>
+                    <td>{{.DeviceName}}</td>
+                    <td>{{.DivisionCode}}</td>
+                    <td>{{.ManagementUnit}}</td>
+                    <td>{{.MaintainUnit}}</td>
+                    <td>{{.UpdateTime}}</td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 20px; color: #999;">暂无数据</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+
+        <!-- 分页 -->
+        <div class="pagination">
+            <span class="page-info">第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
+            {{if .HasPrev}}
+            <a href="/filelist?page={{.PrevPage}}&device_code={{.SearchCode}}&device_name={{.SearchName}}" class="page-btn">上一页</a>
+            {{end}}
+            {{if .HasNext}}
+            <a href="/filelist?page={{.NextPage}}&device_code={{.SearchCode}}&device_name={{.SearchName}}" class="page-btn">下一页</a>
+            {{end}}
+        </div>
+
+    </div>
+
+</body>
+</html>
