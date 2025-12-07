@@ -141,6 +141,7 @@ type FileItemList struct {
 	DeviceCode     string
 	DeviceName     string
 	DivisionCode   string
+	Monitor_point_Type  string
 	ManagementUnit string
 	MaintainUnit   string
 	UpdateTime     string
@@ -235,7 +236,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. 查询列表数据 (只查询 7 个关键字段)
-	queryFields := "id, device_code, device_name, division_code, management_unit, maintain_unit, update_time"
+	queryFields := "id, device_code, device_name, division_code, monitor_point_type,management_unit, maintain_unit, update_time"
 	querySQL := fmt.Sprintf("SELECT %s FROM fileList %s ORDER BY id DESC LIMIT ? OFFSET ?", queryFields, whereSQL)
 
 	// 准备完整的参数列表
@@ -258,6 +259,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			&item.DeviceCode,
 			&item.DeviceName,
 			&item.DivisionCode,
+			&item.Monitor_point_Type,
 			&item.ManagementUnit,
 			&item.MaintainUnit,
 			&item.UpdateTime,
