@@ -408,9 +408,28 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 				params[j] = lat
 			case 64:
 				params[j] = recDays
+    
+			// --- 新增：处理启用时间格式 ---
+			case 48: // enabled_time
+				timeStr := strings.TrimSpace(row[excelIdx])
+				if timeStr == "" {
+					params[j] = nil // 如果为空存 NULL
+				} else {
+				// 尝试解析 ISO8601 格式 (2025-11-05T00:00:00+08:00)
+					parsedTime, err := time.Parse(time.RFC3339, timeStr)
+					if err == nil {
+                // 如果解析成功，转为 MySQL 接受的格式: 2025-11-05 00:00:00
+						params[j] = parsedTime.Format("2006-01-02 15:04:05")
+					} else {
+                // 如果不是 ISO 格式，直接按原样存（可能是已经手工改好的格式）
+						params[j] = timeStr
+            }
+        }
+    // ----------------------------
 
 			// 必填项列表
-			case 1, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 21, 22, 27, 28, 29, 30, 33, 34, 35, 38, 39, 41, 48, 50, 71:
+			case 1, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 21, 22, 27, 28, 29, 30, 33, 34, 35, 38, 39, 41, 50, 71:
+			// 注意：我把 48 从这里移除了，因为上面单独处理了
 				params[j] = toDBValue(row[excelIdx], true)
 
 			// 可为空项

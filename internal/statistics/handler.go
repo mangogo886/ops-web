@@ -33,25 +33,56 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/stats/weekly", http.StatusFound)
 }
 
-// 本周建档统计
+// 本周建档统计（改为按日期范围统计）
 func WeeklyHandler(w http.ResponseWriter, r *http.Request) {
-	// 计算本周的开始时间（周一 00:00:00）
-	now := time.Now()
-	weekday := int(now.Weekday())
-	if weekday == 0 { // 周日
-		weekday = 7
-	}
-	weekStart := now.AddDate(0, 0, -(weekday - 1))
-	weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, weekStart.Location())
+	// 获取URL参数中的日期
+	startDateStr := r.URL.Query().Get("start_date")
+	endDateStr := r.URL.Query().Get("end_date")
 
-	stats, summary := getStatistics(weekStart)
+	// 如果没有传入日期，默认为本周
+	if startDateStr == "" || endDateStr == "" {
+		now := time.Now()
+		weekday := int(now.Weekday())
+		if weekday == 0 { // 周日
+			weekday = 7
+		}
+		weekStart := now.AddDate(0, 0, -(weekday - 1))
+		weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, weekStart.Location())
+		
+		// 本周日 23:59:59
+		weekEnd := weekStart.AddDate(0, 0, 6)
+		weekEnd = time.Date(weekEnd.Year(), weekEnd.Month(), weekEnd.Day(), 23, 59, 59, 0, weekEnd.Location())
+		
+		startDateStr = weekStart.Format("2006-01-02")
+		endDateStr = weekEnd.Format("2006-01-02")
+	}
+
+	// 解析日期
+	startDate, err1 := time.Parse("2006-01-02", startDateStr)
+	endDate, err2 := time.Parse("2006-01-02", endDateStr)
+	
+	// 如果日期解析失败，使用默认值
+	if err1 != nil || err2 != nil {
+		now := time.Now()
+		startDate = now.AddDate(0, 0, -7) // 默认最近7天
+		endDate = now
+		startDateStr = startDate.Format("2006-01-02")
+		endDateStr = endDate.Format("2006-01-02")
+	}
+
+	// 设置结束时间为当天的 23:59:59
+	endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
+
+	stats, summary := getStatisticsByDateRange(startDate, endDate)
 
 	data := StatsPageData{
-		Title:      "本周建档统计",
+		Title:      "按日期统计",
 		ActiveMenu: "stats",
 		SubMenu:    "weekly",
 		Stats:      stats,
 		Summary:    summary,
+		StartDate:  startDateStr,
+		EndDate:    endDateStr,
 	}
 
 	renderTemplate(w, data)
@@ -59,7 +90,7 @@ func WeeklyHandler(w http.ResponseWriter, r *http.Request) {
 
 // 建档全量统计
 func TotalHandler(w http.ResponseWriter, r *http.Request) {
-	stats, summary := getStatistics(time.Time{}) // 传入零值时间表示不过滤
+	stats, summary := getStatisticsByDateRange(time.Time{}, time.Time{}) // 传入零值时间表示不过滤
 
 	data := StatsPageData{
 		Title:      "建档全量统计",
@@ -67,13 +98,15 @@ func TotalHandler(w http.ResponseWriter, r *http.Request) {
 		SubMenu:    "total",
 		Stats:      stats,
 		Summary:    summary,
+		StartDate:  "",
+		EndDate:    "",
 	}
 
 	renderTemplate(w, data)
 }
 
-// 获取统计数据的核心函数
-func getStatistics(startTime time.Time) ([]StatRow, StatRow) {
+// 按日期范围获取统计数据
+func getStatisticsByDateRange(startTime, endTime time.Time) ([]StatRow, StatRow) {
 	// 构建 SQL 查询
 	query := `
 		SELECT 
@@ -86,10 +119,12 @@ func getStatistics(startTime time.Time) ([]StatRow, StatRow) {
 
 	args := []interface{}{}
 
-	// 如果需要过滤时间（本周统计）
-	if !startTime.IsZero() {
-		query += " AND update_time >= ?"
-		args = append(args, startTime.Format("2006-01-02 15:04:05"))
+	// 如果需要过滤时间（按日期范围统计）
+	if !startTime.IsZero() && !endTime.IsZero() {
+		// 使用 DATE() 函数提取日期部分进行比较
+		query += " AND DATE(update_time) >= ? AND DATE(update_time) <= ?"
+		args = append(args, startTime.Format("2006-01-02"))
+		args = append(args, endTime.Format("2006-01-02"))
 	}
 
 	query += " GROUP BY management_unit, monitor_point_type ORDER BY management_unit, monitor_point_type"
