@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/xuri/excelize/v2 v2.8.0
+	golang.org/x/crypto v0.17.0
 )
 
 require (
@@ -15,7 +16,6 @@ require (
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/xuri/efp v0.0.1 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
-	golang.org/x/crypto v0.18.0 // indirect
-	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 )

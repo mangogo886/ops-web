@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"ops-web/internal/auth"
 	"ops-web/internal/db"
+	"ops-web/internal/operationlog"
 	"strconv"
 	"strings"
 	"time"
@@ -151,6 +153,7 @@ type FileItemList struct {
 type PageData struct {
 	Title         string
 	ActiveMenu    string
+	SubMenu       string
 	List          []FileItemList // 修改为使用轻量级结构体
 	SearchCode    string
 	SearchName    string
@@ -279,10 +282,24 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 记录查询操作日志（如果有查询条件）
+	currentUser := auth.GetCurrentUser(r)
+	if currentUser != nil && (searchCode != "" || searchName != "") {
+		action := "查询建档明细"
+		if searchCode != "" {
+			action += fmt.Sprintf("（设备编码：%s）", searchCode)
+		}
+		if searchName != "" {
+			action += fmt.Sprintf("（设备名称：%s）", searchName)
+		}
+		operationlog.Record(r, currentUser.Username, action)
+	}
+
 	// 4. 准备数据并渲染模板
 	data := PageData{
 		Title:         "建档明细",
 		ActiveMenu:    "filelist",
+		SubMenu:       "",
 		List:          fileList,
 		SearchCode:    searchCode,
 		SearchName:    searchName,
@@ -453,6 +470,13 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 记录导入操作日志
+	currentUser := auth.GetCurrentUser(r)
+	if currentUser != nil {
+		action := fmt.Sprintf("导入建档明细 Excel（共 %d 条数据）", importedCount)
+		operationlog.Record(r, currentUser.Username, action)
+	}
+
 	http.Redirect(w, r, "/filelist?message=ImportSuccess&count="+strconv.Itoa(importedCount), http.StatusSeeOther)
 }
 
@@ -581,6 +605,23 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 		rowNum++
 	}
 
+	// 记录导出操作日志
+	currentUser := auth.GetCurrentUser(r)
+	if currentUser != nil {
+		action := "导出建档明细 Excel"
+		if searchCode != "" || searchName != "" {
+			action += "（带筛选条件"
+			if searchCode != "" {
+				action += fmt.Sprintf("，设备编码：%s", searchCode)
+			}
+			if searchName != "" {
+				action += fmt.Sprintf("，设备名称：%s", searchName)
+			}
+			action += "）"
+		}
+		operationlog.Record(r, currentUser.Username, action)
+	}
+
 	// 输出文件
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	filename := fmt.Sprintf("attachment; filename=\"建档明细导出_%s.xlsx\"", time.Now().Format("20060102"))
@@ -600,4 +641,132 @@ func DownloadTemplateHandler(w http.ResponseWriter, r *http.Request) {
 	filename := fmt.Sprintf("attachment; filename=\"建档数据导入模板_%s.xlsx\"", time.Now().Format("20060102"))
 	w.Header().Set("Content-Disposition", filename)
 	f.Write(w)
+}
+
+// --- DeleteHandler: 批量删除建档明细 ---
+
+func DeleteHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Redirect(w, r, "/filelist", http.StatusSeeOther)
+		return
+	}
+
+	// 获取要删除的ID列表
+	r.ParseForm()
+	ids := r.Form["ids"]
+	if len(ids) == 0 {
+		// 保留查询参数
+		searchCode := r.URL.Query().Get("device_code")
+		searchName := r.URL.Query().Get("device_name")
+		redirectURL := "/filelist"
+		if searchCode != "" || searchName != "" {
+			redirectURL += "?message=请选择要删除的数据&type=error"
+			if searchCode != "" {
+				redirectURL += "&device_code=" + searchCode
+			}
+			if searchName != "" {
+				redirectURL += "&device_name=" + searchName
+			}
+		} else {
+			redirectURL += "?message=请选择要删除的数据&type=error"
+		}
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// 在删除前先查询设备编码
+	placeholders := strings.Repeat("?,", len(ids))
+	placeholders = strings.TrimRight(placeholders, ",")
+	querySQL := fmt.Sprintf("SELECT device_code FROM fileList WHERE id IN (%s)", placeholders)
+	
+	queryArgs := make([]interface{}, len(ids))
+	for i, id := range ids {
+		queryArgs[i] = id
+	}
+	
+	rows, err := db.DBInstance.Query(querySQL, queryArgs...)
+	if err != nil {
+		// 保留查询参数
+		searchCode := r.URL.Query().Get("device_code")
+		searchName := r.URL.Query().Get("device_name")
+		redirectURL := "/filelist?message=查询设备编码失败: " + err.Error() + "&type=error"
+		if searchCode != "" {
+			redirectURL += "&device_code=" + searchCode
+		}
+		if searchName != "" {
+			redirectURL += "&device_name=" + searchName
+		}
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+	defer rows.Close()
+	
+	var deviceCodes []string
+	for rows.Next() {
+		var deviceCode string
+		if err := rows.Scan(&deviceCode); err != nil {
+			continue
+		}
+		deviceCodes = append(deviceCodes, deviceCode)
+	}
+
+	// 构建删除SQL（使用IN子句）
+	deleteSQL := fmt.Sprintf("DELETE FROM fileList WHERE id IN (%s)", placeholders)
+
+	// 准备参数
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+
+	// 执行删除
+	result, err := db.DBInstance.Exec(deleteSQL, args...)
+	if err != nil {
+		// 保留查询参数
+		searchCode := r.URL.Query().Get("device_code")
+		searchName := r.URL.Query().Get("device_name")
+		redirectURL := "/filelist?message=删除失败: " + err.Error() + "&type=error"
+		if searchCode != "" {
+			redirectURL += "&device_code=" + searchCode
+		}
+		if searchName != "" {
+			redirectURL += "&device_name=" + searchName
+		}
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// 获取删除的行数
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		rowsAffected = int64(len(ids))
+	}
+
+	// 记录删除操作日志（使用设备编码）
+	currentUser := auth.GetCurrentUser(r)
+	if currentUser != nil {
+		action := fmt.Sprintf("删除建档明细（共 %d 条数据", rowsAffected)
+		if len(deviceCodes) > 0 {
+			// 如果设备编码太多，只显示前5个，其余用省略号
+			if len(deviceCodes) <= 5 {
+				action += fmt.Sprintf("，设备编码：%s", strings.Join(deviceCodes, ", "))
+			} else {
+				action += fmt.Sprintf("，设备编码：%s 等 %d 个", strings.Join(deviceCodes[:5], ", "), len(deviceCodes))
+			}
+		}
+		action += "）"
+		operationlog.Record(r, currentUser.Username, action)
+	}
+
+	// 保留查询参数
+	searchCode := r.URL.Query().Get("device_code")
+	searchName := r.URL.Query().Get("device_name")
+	redirectURL := fmt.Sprintf("/filelist?message=成功删除 %d 条数据&type=success", rowsAffected)
+	if searchCode != "" {
+		redirectURL += "&device_code=" + searchCode
+	}
+	if searchName != "" {
+		redirectURL += "&device_name=" + searchName
+	}
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
