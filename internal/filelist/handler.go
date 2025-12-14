@@ -167,6 +167,8 @@ type PageData struct {
 	HasNext       bool
 	PrevPage      int
 	NextPage      int
+	FirstPage     int
+	LastPage      int
 	Query         string
 	ImportMessage string
 	ImportCount   int
@@ -207,7 +209,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	importCount, _ := strconv.Atoi(importCountStr)
 
-	pageSize := 20
+	pageSize := 50
 	offset := (page - 1) * pageSize
 
 	// 构造查询条件
@@ -352,9 +354,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// 4. 准备数据并渲染模板
 	data := PageData{
-		Title:         "建档明细",
+		Title:         "设备建档明细",
 		ActiveMenu:    "filelist",
-		SubMenu:       "",
+		SubMenu:       "device_filelist",
 		List:          fileList,
 		SearchCode:    searchCode,
 		SearchName:    searchName,
@@ -366,6 +368,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		HasNext:       page < totalPages,
 		PrevPage:      page - 1,
 		NextPage:      page + 1,
+		FirstPage:     1,
+		LastPage:      totalPages,
 		Query:         query,
 		ImportMessage: importMsg,
 		ImportCount:   importCount,
@@ -410,7 +414,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 func ImportHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Redirect(w, r, "/filelist", http.StatusSeeOther)
+		http.Redirect(w, r, "/device/filelist", http.StatusSeeOther)
 		return
 	}
 
@@ -557,7 +561,7 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 		operationlog.Record(r, currentUser.Username, action)
 	}
 
-	http.Redirect(w, r, "/filelist?message=ImportSuccess&count="+strconv.Itoa(importedCount), http.StatusSeeOther)
+	http.Redirect(w, r, "/device/filelist?message=ImportSuccess&count="+strconv.Itoa(importedCount), http.StatusSeeOther)
 }
 
 // --- ExportHandler: 导出 XLSX ---
@@ -752,7 +756,7 @@ func DownloadTemplateHandler(w http.ResponseWriter, r *http.Request) {
 
 func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Redirect(w, r, "/filelist", http.StatusSeeOther)
+		http.Redirect(w, r, "/device/filelist", http.StatusSeeOther)
 		return
 	}
 
@@ -763,7 +767,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		// 保留查询参数
 		searchCode := r.URL.Query().Get("device_code")
 		searchName := r.URL.Query().Get("device_name")
-		redirectURL := "/filelist"
+		redirectURL := "/device/filelist"
 		if searchCode != "" || searchName != "" {
 			redirectURL += "?message=请选择要删除的数据&type=error"
 			if searchCode != "" {
@@ -794,7 +798,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		// 保留查询参数
 		searchCode := r.URL.Query().Get("device_code")
 		searchName := r.URL.Query().Get("device_name")
-		redirectURL := "/filelist?message=查询设备编码失败: " + err.Error() + "&type=error"
+		redirectURL := "/device/filelist?message=查询设备编码失败: " + err.Error() + "&type=error"
 		if searchCode != "" {
 			redirectURL += "&device_code=" + searchCode
 		}
@@ -830,7 +834,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		// 保留查询参数
 		searchCode := r.URL.Query().Get("device_code")
 		searchName := r.URL.Query().Get("device_name")
-		redirectURL := "/filelist?message=删除失败: " + err.Error() + "&type=error"
+		redirectURL := "/device/filelist?message=删除失败: " + err.Error() + "&type=error"
 		if searchCode != "" {
 			redirectURL += "&device_code=" + searchCode
 		}
@@ -866,7 +870,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	// 保留查询参数
 	searchCode := r.URL.Query().Get("device_code")
 	searchName := r.URL.Query().Get("device_name")
-	redirectURL := fmt.Sprintf("/filelist?message=成功删除 %d 条数据&type=success", rowsAffected)
+	redirectURL := fmt.Sprintf("/device/filelist?message=成功删除 %d 条数据&type=success", rowsAffected)
 	if searchCode != "" {
 		redirectURL += "&device_code=" + searchCode
 	}

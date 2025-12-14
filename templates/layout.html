@@ -16,9 +16,12 @@
     <div class="sidebar">
         <h3 style="text-align:center;padding:20px 0;">档案建档统计</h3>
         <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
-        <a href="/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="menu-item {{if eq .SubMenu "device_filelist"}}active{{end}}" style="padding-left: 40px; font-size: 14px;">设备建档明细</a>
+        <a href="/checkpoint/filelist" class="menu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}" style="padding-left: 40px; font-size: 14px;">卡口建档明细</a>
         <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
-        <a href="/audit/progress" class="menu-item {{if eq .SubMenu "audit_progress"}}active{{end}}" style="padding-left: 40px; font-size: 14px;">审核进度</a>
+        <a href="/audit/progress" class="menu-item {{if eq .SubMenu "audit_progress"}}active{{end}}" style="padding-left: 40px; font-size: 14px;">设备审核进度</a>
+        <a href="/checkpoint/progress" class="menu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}" style="padding-left: 40px; font-size: 14px;">卡口审核进度</a>
         <a href="/audit/statistics" class="menu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}" style="padding-left: 40px; font-size: 14px;">月度建档数据</a>
     </div>
     <div class="content">

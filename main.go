@@ -6,6 +6,8 @@ import (
     "ops-web/internal/auth"
     "ops-web/internal/auditprogress"
     "ops-web/internal/auditstatistics"
+    "ops-web/internal/checkpointfilelist"
+    "ops-web/internal/checkpointprogress"
     "ops-web/internal/db"
     "ops-web/internal/filelist"
     "ops-web/internal/logger"
@@ -34,6 +36,13 @@ func main() {
         log.Printf("警告: 初始化审核表失败: %v", err)
         // 不中断程序运行，允许用户手动创建表
     }
+    
+    // 1.2. 初始化卡口审核相关的数据库表
+    if err := db.InitCheckpointTables(); err != nil {
+        logger.Errorf("初始化卡口审核表失败: %v", err)
+        log.Printf("警告: 初始化卡口审核表失败: %v", err)
+        // 不中断程序运行，允许用户手动创建表
+    }
 
     // 2. 注册路由
     
@@ -45,7 +54,7 @@ func main() {
     http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
         if r.URL.Path == "/" {
             if auth.IsAuthenticated(r) {
-                http.Redirect(w, r, "/filelist", http.StatusFound)
+                http.Redirect(w, r, "/device/filelist", http.StatusFound)
             } else {
                 http.Redirect(w, r, "/login", http.StatusFound)
             }
@@ -59,8 +68,25 @@ func main() {
     http.HandleFunc("/stats/export", auth.RequireAuth(statistics.ExportHandler))  // 导出统计信息
     
     // ===== 建档明细路由（需要登录） =====
-    http.HandleFunc("/filelist", auth.RequireAuth(filelist.Handler))
-    http.HandleFunc("/filelist/export", auth.RequireAuth(filelist.ExportHandler))
+    // 设备建档明细（原/filelist路由）
+    http.HandleFunc("/device/filelist", auth.RequireAuth(filelist.Handler))
+    http.HandleFunc("/device/filelist/export", auth.RequireAuth(filelist.ExportHandler))
+    // 兼容旧路由，重定向到新路由
+    http.HandleFunc("/filelist", auth.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+        http.Redirect(w, r, "/device/filelist", http.StatusFound)
+    }))
+    http.HandleFunc("/filelist/export", auth.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+        // 重定向到新的导出路由
+        newURL := "/device/filelist/export" + r.URL.RawQuery
+        if newURL != "" {
+            newURL = "?" + newURL
+        }
+        http.Redirect(w, r, newURL, http.StatusFound)
+    }))
+    
+    // 卡口建档明细
+    http.HandleFunc("/checkpoint/filelist", auth.RequireAuth(checkpointfilelist.Handler))
+    http.HandleFunc("/checkpoint/filelist/export", auth.RequireAuth(checkpointfilelist.ExportHandler))
 
     // ===== 审核进度路由（需要登录） =====
     // 注意：必须先注册子路由，再注册父路由
@@ -75,6 +101,14 @@ func main() {
     http.HandleFunc("/audit", auth.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
         http.Redirect(w, r, "/audit/progress", http.StatusFound)
     }))
+    
+    // ===== 卡口审核进度路由（需要登录） =====
+    http.HandleFunc("/checkpoint/progress", auth.RequireAuth(checkpointprogress.Handler))
+    http.HandleFunc("/checkpoint/progress/import", auth.RequireAuth(checkpointprogress.ImportHandler))
+    http.HandleFunc("/checkpoint/progress/detail", auth.RequireAuth(checkpointprogress.DetailHandler))
+    http.HandleFunc("/checkpoint/progress/edit", auth.RequireAuth(checkpointprogress.EditCommentHandler))
+    http.HandleFunc("/checkpoint/progress/delete", auth.RequireAuth(checkpointprogress.DeleteHandler))
+    http.HandleFunc("/checkpoint/progress/download-template", auth.RequireAuth(checkpointprogress.DownloadTemplateHandler))
 
     // ===== 用户管理路由（需要管理员权限） =====
     http.HandleFunc("/users", auth.RequireAuth(user.Handler))
@@ -89,7 +123,8 @@ func main() {
     log.Println("Server starting on http://127.0.0.1:8080")
     log.Println("登录页面: http://127.0.0.1:8080/login")
     log.Println("统计信息: http://127.0.0.1:8080/stats")
-    log.Println("建档明细: http://127.0.0.1:8080/filelist")
+    log.Println("设备建档明细: http://127.0.0.1:8080/device/filelist")
+    log.Println("卡口建档明细: http://127.0.0.1:8080/checkpoint/filelist")
     log.Println("用户管理: http://127.0.0.1:8080/users")
     
     if err := http.ListenAndServe(":8080", nil); err != nil {

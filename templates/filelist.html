@@ -223,9 +223,12 @@
     <div class="sidebar">
         <h3>档案建档统计</h3>
         <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
-        <a href="/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
+        <a href="/checkpoint/filelist" class="submenu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}">卡口建档明细</a>
         <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
-        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">审核进度</a>
+        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">设备审核进度</a>
+        <a href="/checkpoint/progress" class="submenu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}">卡口审核进度</a>
         <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
         <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
         <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
@@ -237,7 +240,7 @@
         <!-- 搜索和操作区 -->
         <div class="search-container">
             
-            <form class="search-form" action="/filelist" method="GET" style="flex-wrap: wrap; gap: 10px;">
+            <form class="search-form" action="/device/filelist" method="GET" style="flex-wrap: wrap; gap: 10px;">
                 <input type="text" name="device_code" placeholder="输入设备编码" value="{{.SearchCode}}">
                 <input type="text" name="device_name" placeholder="输入设备名称" value="{{.SearchName}}">
                 <label style="font-weight: 600; color: #2c3e50;">月份查询:</label>
@@ -251,12 +254,12 @@
                 </select>
                 <button type="submit">查询</button>
                 {{if or .SearchCode .SearchName .Month .AuditStatus}}
-                <a href="/filelist" style="padding: 8px 15px; background-color: #95a5a6; color: white; text-decoration: none; border-radius: 4px;">清除</a>
+                <a href="/device/filelist" style="padding: 8px 15px; background-color: #95a5a6; color: white; text-decoration: none; border-radius: 4px;">清除</a>
                 {{end}}
             </form>
 
             <div class="search-form">
-                <a href="/filelist/export{{if .Query}}?{{.Query}}{{end}}" class="action-btn export-btn">导出 XLSX</a>
+                <a href="/device/filelist/export{{if .Query}}?{{.Query}}{{end}}" class="action-btn export-btn">导出 XLSX</a>
             </div>
         </div>
 
@@ -299,11 +302,17 @@
         <!-- 分页 -->
         <div class="pagination">
             <span class="page-info">第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
+            {{if gt .CurrentPage .FirstPage}}
+            <a href="/device/filelist?page={{.FirstPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">首页</a>
+            {{end}}
             {{if .HasPrev}}
-            <a href="/filelist?page={{.PrevPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">上一页</a>
+            <a href="/device/filelist?page={{.PrevPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">上一页</a>
             {{end}}
             {{if .HasNext}}
-            <a href="/filelist?page={{.NextPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">下一页</a>
+            <a href="/device/filelist?page={{.NextPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">下一页</a>
+            {{end}}
+            {{if lt .CurrentPage .LastPage}}
+            <a href="/device/filelist?page={{.LastPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">最后一页</a>
             {{end}}
         </div>
 
