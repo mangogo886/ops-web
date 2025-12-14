@@ -217,10 +217,39 @@ func getStatisticsByDateRange(startTime, endTime time.Time, auditStatus string, 
 
 // ExportHandler: 导出统计数据到Excel
 func ExportHandler(w http.ResponseWriter, r *http.Request) {
-	// 获取查询参数
+	// 获取查询参数（必须与Handler中的查询条件保持一致）
+	// 先尝试从 URL Query 获取
 	startDateStr := r.URL.Query().Get("start_date")
 	endDateStr := r.URL.Query().Get("end_date")
 	auditStatus := r.URL.Query().Get("audit_status")
+
+	// 如果从 Query 获取不到，尝试从 RawQuery 手动解析（处理 URL 编码问题）
+	if startDateStr == "" && endDateStr == "" && auditStatus == "" && r.URL.RawQuery != "" {
+		// 手动解析 RawQuery
+		rawQuery := r.URL.RawQuery
+		// 处理 URL 编码的 = 号（%3d）
+		rawQuery = strings.ReplaceAll(rawQuery, "%3d", "=")
+		rawQuery = strings.ReplaceAll(rawQuery, "%3D", "=")
+		
+		// 解析参数
+		parts := strings.Split(rawQuery, "&")
+		for _, part := range parts {
+			if strings.Contains(part, "=") {
+				kv := strings.SplitN(part, "=", 2)
+				if len(kv) == 2 {
+					key := strings.TrimSpace(kv[0])
+					value := strings.TrimSpace(kv[1])
+					if key == "start_date" {
+						startDateStr = value
+					} else if key == "end_date" {
+						endDateStr = value
+					} else if key == "audit_status" {
+						auditStatus = value
+					}
+				}
+			}
+		}
+	}
 
 	// 解析日期（如果提供了日期参数）
 	var startDate, endDate time.Time
@@ -239,7 +268,7 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 获取统计数据
+	// 获取统计数据（应用筛选条件）
 	stats, summary := getStatisticsByDateRange(startDate, endDate, auditStatus, hasDateFilter)
 
 	// 创建Excel文件

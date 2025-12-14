@@ -1,6 +1,7 @@
 package main
 
 import (
+    "fmt"
     "log"
     "net/http"
     "ops-web/internal/auth"
@@ -122,14 +123,17 @@ func main() {
     http.HandleFunc("/logs", auth.RequireAdmin(operationlog.Handler))
 
     // 3. 启动服务
-    log.Println("Server starting on http://127.0.0.1:8080")
-    log.Println("登录页面: http://127.0.0.1:8080/login")
-    log.Println("统计信息: http://127.0.0.1:8080/stats")
-    log.Println("设备建档明细: http://127.0.0.1:8080/device/filelist")
-    log.Println("卡口建档明细: http://127.0.0.1:8080/checkpoint/filelist")
-    log.Println("用户管理: http://127.0.0.1:8080/users")
+    serverAddr := ":" + db.AppConfig.ServerPort
+    baseURL := fmt.Sprintf("http://%s:%s", db.AppConfig.ServerHost, db.AppConfig.ServerPort)
     
-    if err := http.ListenAndServe(":8080", nil); err != nil {
+    log.Printf("Server starting on %s", baseURL)
+    log.Printf("登录页面: %s/login", baseURL)
+    log.Printf("统计信息: %s/stats", baseURL)
+    log.Printf("设备建档明细: %s/device/filelist", baseURL)
+    log.Printf("卡口建档明细: %s/checkpoint/filelist", baseURL)
+    log.Printf("用户管理: %s/users", baseURL)
+    
+    if err := http.ListenAndServe(serverAddr, nil); err != nil {
         logger.Errorf("HTTP服务启动失败: %v", err)
         log.Fatal(err)
     }

@@ -18,12 +18,16 @@ var (
 )
 
 type Config struct {
-	DBHost string `json:"db_host"`
-	DBPort string `json:"db_port"`
-	DBUser string `json:"db_user"`
-	DBPass string `json:"db_pass"`
-	DBName string `json:"db_name"`
+	DBHost     string `json:"db_host"`
+	DBPort     string `json:"db_port"`
+	DBUser     string `json:"db_user"`
+	DBPass     string `json:"db_pass"`
+	DBName     string `json:"db_name"`
+	ServerHost string `json:"server_host"`
+	ServerPort string `json:"server_port"`
 }
+
+var AppConfig Config
 
 func InitDB() error {
 	var err error
@@ -44,6 +48,17 @@ func InitDB() error {
 			err = e
 			return
 		}
+
+		// 设置默认值
+		if cfg.ServerHost == "" {
+			cfg.ServerHost = "127.0.0.1"
+		}
+		if cfg.ServerPort == "" {
+			cfg.ServerPort = "8080"
+		}
+
+		// 保存到全局变量
+		AppConfig = cfg
 
 		dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 			cfg.DBUser, cfg.DBPass, cfg.DBHost, cfg.DBPort, cfg.DBName)

@@ -269,3 +269,4 @@ CREATE TABLE IF NOT EXISTS `checkpoint_details` (
   CONSTRAINT `fk_checkpoint_details_task` FOREIGN KEY (`task_id`) REFERENCES `checkpoint_tasks` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='卡口审核明细表';
 
+
