@@ -249,7 +249,7 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 设置表头
 	headers := []interface{}{
-		"分局", "一类视频", "二类视频", "三类视频", "四类视频", "合计",
+		"分局", "一类点", "二类点", "三类点", "四类点", "合计",
 	}
 	f.SetSheetRow(sheetName, "A1", &headers)
 

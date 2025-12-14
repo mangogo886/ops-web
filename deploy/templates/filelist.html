@@ -39,23 +39,6 @@
         .menu-item.active { 
             background-color: #3498db; 
         }
-        
-        /* 子菜单样式 */
-        .submenu-item {
-            padding: 12px 20px 12px 40px;
-            color: #bdc3c7;
-            text-decoration: none;
-            display: block;
-            border-bottom: 1px solid #34495e;
-            font-size: 14px;
-        }
-        .submenu-item:hover {
-            background-color: #34495e;
-        }
-        .submenu-item.active {
-            background-color: #2980b9;
-            color: white;
-        }
 
         /* 右侧内容 */
         .content { 
@@ -187,15 +170,6 @@
             gap: 10px;
             align-items: center;
         }
-        
-        /* 删除按钮样式 */
-        .delete-btn {
-            background-color: #e74c3c;
-        }
-        .delete-btn:hover {
-            background-color: #c0392b;
-        }
-        
     </style>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -214,7 +188,6 @@
                 window.history.replaceState({path:url.href}, '', url.href);
             }
         }
-        
     });
     </script>
 </head>
@@ -223,16 +196,7 @@
     <div class="sidebar">
         <h3>档案建档统计</h3>
         <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
-        <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
-        <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
-        <a href="/checkpoint/filelist" class="submenu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}">卡口建档明细</a>
-        <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
-        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">设备审核进度</a>
-        <a href="/checkpoint/progress" class="submenu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}">卡口审核进度</a>
-        <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
-        <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
-        <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
-        <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
+        <a href="/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
     </div>
 
     <div class="content">
@@ -240,26 +204,20 @@
         <!-- 搜索和操作区 -->
         <div class="search-container">
             
-            <form class="search-form" action="/device/filelist" method="GET" style="flex-wrap: wrap; gap: 10px;">
+            <form class="search-form" action="/filelist" method="GET">
                 <input type="text" name="device_code" placeholder="输入设备编码" value="{{.SearchCode}}">
                 <input type="text" name="device_name" placeholder="输入设备名称" value="{{.SearchName}}">
-                <label style="font-weight: 600; color: #2c3e50;">月份查询:</label>
-                <input type="month" name="month" value="{{.Month}}" placeholder="选择月份" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
-                <label style="font-weight: 600; color: #2c3e50;">建档状态:</label>
-                <select name="audit_status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
-                    <option value="">全部</option>
-                    <option value="0" {{if eq .AuditStatus "0"}}selected{{end}}>未审核未建档</option>
-                    <option value="1" {{if eq .AuditStatus "1"}}selected{{end}}>已审核未建档</option>
-                    <option value="2" {{if eq .AuditStatus "2"}}selected{{end}}>已建档</option>
-                </select>
                 <button type="submit">查询</button>
-                {{if or .SearchCode .SearchName .Month .AuditStatus}}
-                <a href="/device/filelist" style="padding: 8px 15px; background-color: #95a5a6; color: white; text-decoration: none; border-radius: 4px;">清除</a>
-                {{end}}
             </form>
 
             <div class="search-form">
-                <a href="/device/filelist/export{{if .Query}}?{{.Query}}{{end}}" class="action-btn export-btn">导出 XLSX</a>
+                <a href="/filelist/download-template" class="action-btn template-btn">下载导入模板</a>
+                <a href="/filelist/export?device_code={{.SearchCode}}&device_name={{.SearchName}}" class="action-btn export-btn">导出 XLSX</a>
+                
+                <form action="/filelist/import" method="POST" enctype="multipart/form-data" style="display: inline-flex; align-items: center; margin: 0;">
+                    <input type="file" name="upload_file" accept=".xlsx,.xls" required style="border: none; margin-right: 10px;">
+                    <button type="submit" class="action-btn import-btn">导入建档</button>
+                </form>
             </div>
         </div>
 
@@ -274,7 +232,6 @@
 					<th>监控点类型</th>
                     <th>管理单位</th>
                     <th>维护单位</th>
-                    <th>建档状态</th>
                     <th>更新时间</th>
                 </tr>
             </thead>
@@ -288,12 +245,11 @@
 					<td>{{.Monitor_point_Type}}</td>
                     <td>{{.ManagementUnit}}</td>
                     <td>{{.MaintainUnit}}</td>
-                    <td>{{getAuditStatusText .AuditStatus}}</td>
                     <td>{{.UpdateTime}}</td>
                 </tr>
                 {{else}}
                 <tr>
-                    <td colspan="9" style="text-align: center; padding: 20px; color: #999;">暂无数据</td>
+                    <td colspan="7" style="text-align: center; padding: 20px; color: #999;">暂无数据</td>
                 </tr>
                 {{end}}
             </tbody>
@@ -302,17 +258,11 @@
         <!-- 分页 -->
         <div class="pagination">
             <span class="page-info">第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
-            {{if gt .CurrentPage .FirstPage}}
-            <a href="/device/filelist?page={{.FirstPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">首页</a>
-            {{end}}
             {{if .HasPrev}}
-            <a href="/device/filelist?page={{.PrevPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">上一页</a>
+            <a href="/filelist?page={{.PrevPage}}&device_code={{.SearchCode}}&device_name={{.SearchName}}" class="page-btn">上一页</a>
             {{end}}
             {{if .HasNext}}
-            <a href="/device/filelist?page={{.NextPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">下一页</a>
-            {{end}}
-            {{if lt .CurrentPage .LastPage}}
-            <a href="/device/filelist?page={{.LastPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">最后一页</a>
+            <a href="/filelist?page={{.NextPage}}&device_code={{.SearchCode}}&device_name={{.SearchName}}" class="page-btn">下一页</a>
             {{end}}
         </div>
 

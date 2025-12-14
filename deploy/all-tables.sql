@@ -51,7 +51,16 @@ CREATE TABLE IF NOT EXISTS `operation_logs` (
   KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户操作日志';
 
-
+-- 4. 机构名称字典表
+CREATE TABLE IF NOT EXISTS `organizations` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '自增ID',
+  `name` varchar(100) NOT NULL COMMENT '机构名称',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_name` (`name`),
+  KEY `idx_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='机构名称字典表';
 
 -- 5. 档案审核任务表
 CREATE TABLE IF NOT EXISTS `audit_tasks` (
