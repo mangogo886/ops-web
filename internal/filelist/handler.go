@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"ops-web/internal/auth"
 	"ops-web/internal/db"
+	"ops-web/internal/logger"
 	"ops-web/internal/operationlog"
 	"strconv"
 	"strings"
@@ -137,7 +138,7 @@ type FileItem struct {
 	UpdateTime             string
 }
 
-// 列表页面专用的轻量级结构体 (只包含7个显示字段)
+// 列表页面专用的轻量级结构体 (包含显示字段和建档状态)
 type FileItemList struct {
 	ID             int
 	DeviceCode     string
@@ -147,6 +148,7 @@ type FileItemList struct {
 	ManagementUnit string
 	MaintainUnit   string
 	UpdateTime     string
+	AuditStatus    int // 建档状态：0-未审核未建档，1-已审核未建档，2-已建档
 }
 
 // 页面数据结构体
@@ -154,9 +156,11 @@ type PageData struct {
 	Title         string
 	ActiveMenu    string
 	SubMenu       string
-	List          []FileItemList // 修改为使用轻量级结构体
+	List          []FileItemList
 	SearchCode    string
 	SearchName    string
+	Month         string // 月份查询条件 (格式: 2024-01)
+	AuditStatus   string // 建档状态查询条件
 	CurrentPage   int
 	TotalPages    int
 	HasPrev       bool
@@ -191,6 +195,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// 获取查询参数
 	searchCode := r.URL.Query().Get("device_code")
 	searchName := r.URL.Query().Get("device_name")
+	month := r.URL.Query().Get("month")        // 月份，格式: 2024-01
+	auditStatus := r.URL.Query().Get("audit_status") // 建档状态: 0, 1, 2 或空
 	pageStr := r.URL.Query().Get("page")
 	importMsg := r.URL.Query().Get("message")
 	importCountStr := r.URL.Query().Get("count")
@@ -217,11 +223,34 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		args = append(args, "%"+searchName+"%")
 	}
 
+	// 月份查询：根据update_time按月份
+	if month != "" {
+		if _, err := time.Parse("2006-01", month); err == nil {
+			whereSQL += " AND YEAR(update_time) = ? AND MONTH(update_time) = ?"
+			parts := strings.Split(month, "-")
+			if len(parts) == 2 {
+				year, _ := strconv.Atoi(parts[0])
+				monthNum, _ := strconv.Atoi(parts[1])
+				args = append(args, year, monthNum)
+			}
+		}
+	}
+
+	// 建档状态查询
+	if auditStatus != "" {
+		statusInt, err := strconv.Atoi(auditStatus)
+		if err == nil && (statusInt == 0 || statusInt == 1 || statusInt == 2) {
+			whereSQL += " AND audit_status = ?"
+			args = append(args, statusInt)
+		}
+	}
+
 	// 1. 查询总记录数
 	var totalCount int
-	countSQL := "SELECT COUNT(*) FROM fileList" + whereSQL
+	countSQL := "SELECT COUNT(*) FROM audit_details" + whereSQL
 	err := db.DBInstance.QueryRow(countSQL, args...).Scan(&totalCount)
 	if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("建档明细-查询总数失败: %v, SQL: %s, Args: %v", err, countSQL, args)
 		http.Error(w, "查询总数失败: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -238,15 +267,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		page = totalPages
 	}
 
-	// 3. 查询列表数据 (只查询 7 个关键字段)
-	queryFields := "id, device_code, device_name, division_code, monitor_point_type,management_unit, maintain_unit, update_time"
-	querySQL := fmt.Sprintf("SELECT %s FROM fileList %s ORDER BY id DESC LIMIT ? OFFSET ?", queryFields, whereSQL)
+	// 3. 查询列表数据 (从audit_details表读取，包含建档状态)
+	queryFields := "id, device_code, device_name, division_code, monitor_point_type, management_unit, maintain_unit, update_time, audit_status"
+	querySQL := fmt.Sprintf("SELECT %s FROM audit_details %s ORDER BY id DESC LIMIT ? OFFSET ?", queryFields, whereSQL)
 
 	// 准备完整的参数列表
 	queryArgs := append(args, pageSize, offset)
 
 	rows, err := db.DBInstance.Query(querySQL, queryArgs...)
 	if err != nil {
+		logger.Errorf("建档明细-数据库查询失败: %v, SQL: %s, Args: %v", err, querySQL, queryArgs)
 		http.Error(w, "数据库查询失败: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -266,6 +296,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			&item.ManagementUnit,
 			&item.MaintainUnit,
 			&item.UpdateTime,
+			&item.AuditStatus,
 		)
 
 		if err != nil {
@@ -278,19 +309,43 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// 检查遍历过程中的错误
 	if err = rows.Err(); err != nil {
+		logger.Errorf("建档明细-数据遍历失败: %v", err)
 		http.Error(w, "数据遍历失败: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// 构建查询参数字符串（用于表单回显和分页链接）
+	queryParams := []string{}
+	if searchCode != "" {
+		queryParams = append(queryParams, "device_code="+searchCode)
+	}
+	if searchName != "" {
+		queryParams = append(queryParams, "device_name="+searchName)
+	}
+	if month != "" {
+		queryParams = append(queryParams, "month="+month)
+	}
+	if auditStatus != "" {
+		queryParams = append(queryParams, "audit_status="+auditStatus)
+	}
+	query := strings.Join(queryParams, "&")
+
 	// 记录查询操作日志（如果有查询条件）
 	currentUser := auth.GetCurrentUser(r)
-	if currentUser != nil && (searchCode != "" || searchName != "") {
+	if currentUser != nil && (searchCode != "" || searchName != "" || month != "" || auditStatus != "") {
 		action := "查询建档明细"
 		if searchCode != "" {
 			action += fmt.Sprintf("（设备编码：%s）", searchCode)
 		}
 		if searchName != "" {
 			action += fmt.Sprintf("（设备名称：%s）", searchName)
+		}
+		if month != "" {
+			action += fmt.Sprintf("（月份：%s）", month)
+		}
+		if auditStatus != "" {
+			statusText := map[string]string{"0": "未审核未建档", "1": "已审核未建档", "2": "已建档"}
+			action += fmt.Sprintf("（建档状态：%s）", statusText[auditStatus])
 		}
 		operationlog.Record(r, currentUser.Username, action)
 	}
@@ -303,30 +358,49 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		List:          fileList,
 		SearchCode:    searchCode,
 		SearchName:    searchName,
+		Month:         month,
+		AuditStatus:   auditStatus,
 		CurrentPage:   page,
 		TotalPages:    totalPages,
 		HasPrev:       page > 1,
 		HasNext:       page < totalPages,
 		PrevPage:      page - 1,
 		NextPage:      page + 1,
-		Query:         r.URL.RawQuery,
+		Query:         query,
 		ImportMessage: importMsg,
 		ImportCount:   importCount,
 	}
 
+	// 建档状态转换函数
+	getAuditStatusText := func(status int) string {
+		switch status {
+		case 0:
+			return "未审核未建档"
+		case 1:
+			return "已审核未建档"
+		case 2:
+			return "已建档"
+		default:
+			return "未知状态"
+		}
+	}
+
 	funcMap := template.FuncMap{
-		"contains": contains,
-		"split":    strings.Split,
+		"contains":         contains,
+		"split":            strings.Split,
+		"getAuditStatusText": getAuditStatusText,
 	}
 
 	tmpl, err := template.New("filelist.html").Funcs(funcMap).ParseFiles("templates/filelist.html")
 	if err != nil {
+		logger.Errorf("建档明细-模板解析失败: %v", err)
 		http.Error(w, "模板解析失败: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = tmpl.Execute(w, data)
 	if err != nil {
+		logger.Errorf("建档明细-模板渲染失败: %v", err)
 		http.Error(w, "模板渲染失败: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -343,6 +417,7 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(32 << 20)
 	file, _, err := r.FormFile("upload_file")
 	if err != nil {
+		logger.Errorf("建档明细-文件上传失败: %v", err)
 		http.Error(w, "文件上传失败", http.StatusBadRequest)
 		return
 	}
@@ -350,6 +425,7 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 
 	f, err := excelize.OpenReader(file)
 	if err != nil {
+		logger.Errorf("建档明细-Excel解析失败: %v", err)
 		http.Error(w, "Excel解析失败", http.StatusInternalServerError)
 		return
 	}
@@ -357,6 +433,7 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := f.GetRows(sheetName)
 	if err != nil {
+		logger.Errorf("建档明细-数据读取失败: %v", err)
 		http.Error(w, "数据读取失败", http.StatusInternalServerError)
 		return
 	}
@@ -389,6 +466,7 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 	stmt, err := tx.Prepare(insertSQL)
 	if err != nil {
 		tx.Rollback()
+		logger.Errorf("建档明细-SQL Prepare失败: %v, SQL: %s", err, insertSQL)
 		http.Error(w, "SQL Prepare失败", http.StatusInternalServerError)
 		return
 	}
@@ -458,6 +536,7 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 		_, execErr := stmt.Exec(params...)
 		if execErr != nil {
 			tx.Rollback()
+			logger.Errorf("建档明细-导入失败，第%d行数据错误: %v", i+1, execErr)
 			errMsg := fmt.Sprintf("导入失败：第 %d 行数据错误。详细信息: %v", i+1, execErr)
 			http.Error(w, errMsg, http.StatusInternalServerError)
 			return
@@ -466,6 +545,7 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = tx.Commit(); err != nil {
+		logger.Errorf("建档明细-数据库提交失败: %v", err)
 		http.Error(w, "数据库提交失败。", http.StatusInternalServerError)
 		return
 	}
@@ -485,6 +565,8 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 func ExportHandler(w http.ResponseWriter, r *http.Request) {
 	searchCode := r.URL.Query().Get("device_code")
 	searchName := r.URL.Query().Get("device_name")
+	month := r.URL.Query().Get("month")
+	auditStatus := r.URL.Query().Get("audit_status")
 
 	// 构造查询条件
 	whereSQL := " WHERE 1=1"
@@ -499,7 +581,29 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 		args = append(args, "%"+searchName+"%")
 	}
 
-	// 查询所有73个字段
+	// 月份查询
+	if month != "" {
+		if _, err := time.Parse("2006-01", month); err == nil {
+			whereSQL += " AND YEAR(update_time) = ? AND MONTH(update_time) = ?"
+			parts := strings.Split(month, "-")
+			if len(parts) == 2 {
+				year, _ := strconv.Atoi(parts[0])
+				monthNum, _ := strconv.Atoi(parts[1])
+				args = append(args, year, monthNum)
+			}
+		}
+	}
+
+	// 建档状态查询
+	if auditStatus != "" {
+		statusInt, err := strconv.Atoi(auditStatus)
+		if err == nil && (statusInt == 0 || statusInt == 1 || statusInt == 2) {
+			whereSQL += " AND audit_status = ?"
+			args = append(args, statusInt)
+		}
+	}
+
+	// 查询所有字段（从audit_details表）
 	querySQL := `SELECT 
 		id, device_code, original_device_code, device_name, division_code, 
 		monitor_point_type, pickup, parent_device, construction_unit, 
@@ -519,10 +623,11 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 		video_stream_delay, key_frame_delay, recording_retention_days, 
 		storage_device_code, storage_channel_number, storage_type, 
 		cache_settings, notes, collection_area_type, update_time
-	FROM fileList` + whereSQL + ` ORDER BY id DESC`
+	FROM audit_details` + whereSQL + ` ORDER BY id DESC`
 
 	rows, err := db.DBInstance.Query(querySQL, args...)
 	if err != nil {
+		logger.Errorf("建档明细-导出查询失败: %v, SQL: %s, Args: %v", err, querySQL, args)
 		http.Error(w, "数据库查询失败", http.StatusInternalServerError)
 		return
 	}
@@ -677,7 +782,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	// 在删除前先查询设备编码
 	placeholders := strings.Repeat("?,", len(ids))
 	placeholders = strings.TrimRight(placeholders, ",")
-	querySQL := fmt.Sprintf("SELECT device_code FROM fileList WHERE id IN (%s)", placeholders)
+	querySQL := fmt.Sprintf("SELECT device_code FROM audit_details WHERE id IN (%s)", placeholders)
 	
 	queryArgs := make([]interface{}, len(ids))
 	for i, id := range ids {
@@ -711,7 +816,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 构建删除SQL（使用IN子句）
-	deleteSQL := fmt.Sprintf("DELETE FROM fileList WHERE id IN (%s)", placeholders)
+	deleteSQL := fmt.Sprintf("DELETE FROM audit_details WHERE id IN (%s)", placeholders)
 
 	// 准备参数
 	args := make([]interface{}, len(ids))

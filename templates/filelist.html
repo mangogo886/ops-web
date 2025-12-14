@@ -196,16 +196,6 @@
             background-color: #c0392b;
         }
         
-        /* 复选框样式 */
-        .checkbox-cell {
-            text-align: center;
-            width: 50px;
-        }
-        .checkbox-cell input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
     </style>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -225,70 +215,7 @@
             }
         }
         
-        // 初始化删除按钮状态
-        updateDeleteButton();
     });
-    
-    // 全选/取消全选
-    function toggleSelectAll() {
-        var selectAll = document.getElementById('selectAll');
-        var checkboxes = document.querySelectorAll('.row-checkbox');
-        checkboxes.forEach(function(checkbox) {
-            checkbox.checked = selectAll.checked;
-        });
-        updateDeleteButton();
-    }
-    
-    // 更新删除按钮显示状态
-    function updateDeleteButton() {
-        var checkboxes = document.querySelectorAll('.row-checkbox:checked');
-        var deleteBtn = document.getElementById('deleteSelectedBtn');
-        if (checkboxes.length > 0) {
-            deleteBtn.style.display = 'inline-block';
-        } else {
-            deleteBtn.style.display = 'none';
-        }
-        
-        // 更新全选复选框状态
-        var allCheckboxes = document.querySelectorAll('.row-checkbox');
-        var checkedCount = document.querySelectorAll('.row-checkbox:checked').length;
-        var selectAll = document.getElementById('selectAll');
-        if (allCheckboxes.length > 0) {
-            selectAll.checked = checkedCount === allCheckboxes.length;
-        }
-    }
-    
-    // 删除选中的数据
-    function deleteSelected() {
-        var checkboxes = document.querySelectorAll('.row-checkbox:checked');
-        if (checkboxes.length === 0) {
-            alert('请先选择要删除的数据');
-            return;
-        }
-        
-        var ids = [];
-        checkboxes.forEach(function(checkbox) {
-            ids.push(checkbox.value);
-        });
-        
-        if (confirm('确定要删除选中的 ' + ids.length + ' 条数据吗？此操作不可恢复！')) {
-            // 创建表单提交删除请求
-            var form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/filelist/delete';
-            
-            ids.forEach(function(id) {
-                var input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'ids';
-                input.value = id;
-                form.appendChild(input);
-            });
-            
-            document.body.appendChild(form);
-            form.submit();
-        }
-    }
     </script>
 </head>
 <body>
@@ -297,6 +224,9 @@
         <h3>档案建档统计</h3>
         <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
         <a href="/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
+        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">审核进度</a>
+        <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
         <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
         <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
         <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
@@ -307,22 +237,26 @@
         <!-- 搜索和操作区 -->
         <div class="search-container">
             
-            <form class="search-form" action="/filelist" method="GET">
+            <form class="search-form" action="/filelist" method="GET" style="flex-wrap: wrap; gap: 10px;">
                 <input type="text" name="device_code" placeholder="输入设备编码" value="{{.SearchCode}}">
                 <input type="text" name="device_name" placeholder="输入设备名称" value="{{.SearchName}}">
+                <label style="font-weight: 600; color: #2c3e50;">月份查询:</label>
+                <input type="month" name="month" value="{{.Month}}" placeholder="选择月份" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
+                <label style="font-weight: 600; color: #2c3e50;">建档状态:</label>
+                <select name="audit_status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">全部</option>
+                    <option value="0" {{if eq .AuditStatus "0"}}selected{{end}}>未审核未建档</option>
+                    <option value="1" {{if eq .AuditStatus "1"}}selected{{end}}>已审核未建档</option>
+                    <option value="2" {{if eq .AuditStatus "2"}}selected{{end}}>已建档</option>
+                </select>
                 <button type="submit">查询</button>
+                {{if or .SearchCode .SearchName .Month .AuditStatus}}
+                <a href="/filelist" style="padding: 8px 15px; background-color: #95a5a6; color: white; text-decoration: none; border-radius: 4px;">清除</a>
+                {{end}}
             </form>
 
             <div class="search-form">
-                <a href="/filelist/download-template" class="action-btn template-btn">下载导入模板</a>
-                <a href="/filelist/export?device_code={{.SearchCode}}&device_name={{.SearchName}}" class="action-btn export-btn">导出 XLSX</a>
-                
-                <form action="/filelist/import" method="POST" enctype="multipart/form-data" style="display: inline-flex; align-items: center; margin: 0;">
-                    <input type="file" name="upload_file" accept=".xlsx,.xls" required style="border: none; margin-right: 10px;">
-                    <button type="submit" class="action-btn import-btn">导入建档</button>
-                </form>
-                
-                <button type="button" class="action-btn delete-btn" id="deleteSelectedBtn" onclick="deleteSelected()" style="display: none;">删除选中</button>
+                <a href="/filelist/export{{if .Query}}?{{.Query}}{{end}}" class="action-btn export-btn">导出 XLSX</a>
             </div>
         </div>
 
@@ -330,9 +264,6 @@
         <table>
             <thead>
                 <tr>
-                    <th class="checkbox-cell">
-                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
-                    </th>
                     <th>序号</th>
                     <th>设备编码</th>
                     <th>设备名称</th>
@@ -340,15 +271,13 @@
 					<th>监控点类型</th>
                     <th>管理单位</th>
                     <th>维护单位</th>
+                    <th>建档状态</th>
                     <th>更新时间</th>
                 </tr>
             </thead>
             <tbody>
                 {{range .List}}
                 <tr>
-                    <td class="checkbox-cell">
-                        <input type="checkbox" class="row-checkbox" value="{{.ID}}" onchange="updateDeleteButton()">
-                    </td>
                     <td>{{.ID}}</td>
                     <td>{{.DeviceCode}}</td>
                     <td>{{.DeviceName}}</td>
@@ -356,6 +285,7 @@
 					<td>{{.Monitor_point_Type}}</td>
                     <td>{{.ManagementUnit}}</td>
                     <td>{{.MaintainUnit}}</td>
+                    <td>{{getAuditStatusText .AuditStatus}}</td>
                     <td>{{.UpdateTime}}</td>
                 </tr>
                 {{else}}
@@ -370,10 +300,10 @@
         <div class="pagination">
             <span class="page-info">第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
             {{if .HasPrev}}
-            <a href="/filelist?page={{.PrevPage}}&device_code={{.SearchCode}}&device_name={{.SearchName}}" class="page-btn">上一页</a>
+            <a href="/filelist?page={{.PrevPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">上一页</a>
             {{end}}
             {{if .HasNext}}
-            <a href="/filelist?page={{.NextPage}}&device_code={{.SearchCode}}&device_name={{.SearchName}}" class="page-btn">下一页</a>
+            <a href="/filelist?page={{.NextPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">下一页</a>
             {{end}}
         </div>
 
