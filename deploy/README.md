@@ -98,3 +98,4 @@ go run ../../scripts/init-admin.go <your_password>
 4. 定期备份数据库
 
 
+
