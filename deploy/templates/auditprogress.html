@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}} - 档案建档统计</title>
+    <style>
+    body { 
+        margin: 0; 
+        padding: 0; 
+        font-family: "Microsoft YaHei", sans-serif; 
+        display: flex; 
+        height: 100vh; 
+    }
+    
+    /* 左侧导航 */
+    .sidebar { 
+        width: 220px; 
+        background-color: #2c3e50; 
+        color: white; 
+        display: flex; 
+        flex-direction: column; 
+    }
+    .sidebar h3 { 
+        text-align: center; 
+        padding: 20px 0; 
+        border-bottom: 1px solid #34495e; 
+        margin: 0; 
+    }
+    .menu-item { 
+        padding: 15px 20px; 
+        color: #ecf0f1; 
+        text-decoration: none; 
+        display: block; 
+        border-bottom: 1px solid #34495e; 
+    }
+    .menu-item:hover { 
+        background-color: #34495e; 
+    }
+    .menu-item.active { 
+        background-color: #3498db; 
+    }
+    .submenu-item {
+        padding: 12px 20px 12px 40px;
+        font-size: 14px;
+        color: #bdc3c7;
+        text-decoration: none;
+        display: block;
+        border-bottom: 1px solid #34495e;
+    }
+    .submenu-item:hover {
+        background-color: #34495e;
+    }
+    .submenu-item.active {
+        background-color: #2980b9;
+        color: white;
+    }
+    
+    .content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+    }
+    
+    h1 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+    }
+
+    /* 搜索和操作区 */
+    .search-container { 
+        background: white; 
+        padding: 20px; 
+        border-radius: 5px; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+        margin-bottom: 20px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 15px;
+    }
+    .search-form { 
+        display: flex; 
+        align-items: center; 
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+    }
+    .search-form input, 
+    .search-form button, 
+    .action-btn { 
+        padding: 8px 15px; 
+        border-radius: 4px; 
+        border: 1px solid #ddd;
+    }
+    .search-form input { 
+        width: 180px; 
+        flex-shrink: 0;
+    }
+    .search-form select {
+        flex-shrink: 0;
+    }
+    .search-form label {
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+    
+    .search-form button { 
+        background-color: #3498db; 
+        color: white; 
+        border: none; 
+        cursor: pointer; 
+    }
+    .search-form button:hover { 
+        background-color: #2980b9; 
+    }
+
+    /* 导入表单样式 */
+    .import-form {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        flex-shrink: 0;
+    }
+    .import-form label {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    .import-form input[type="text"] {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        width: 200px;
+    }
+    .import-form input[type="file"] {
+        padding: 8px;
+    }
+    .required {
+        color: #e74c3c;
+    }
+
+    /* 导入/导出按钮样式 */
+    .action-btn { 
+        text-decoration: none; 
+        color: white; 
+        border: none; 
+        cursor: pointer;
+        display: inline-block;
+        text-align: center;
+        padding: 8px 15px;
+        border-radius: 4px;
+    }
+    .import-btn { 
+        background-color: #f39c12; 
+    }
+    .import-btn:hover { 
+        background-color: #e67e22; 
+    }
+    .template-btn { 
+        background-color: #3498db; 
+    }
+    .template-btn:hover { 
+        background-color: #2980b9; 
+    }
+
+    /* 表格 */
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        background: white; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+    }
+    th, td { 
+        padding: 12px 15px; 
+        text-align: left; 
+        border-bottom: 1px solid #eee; 
+        font-size: 14px; 
+    }
+    th { 
+        background-color: #f8f9fa; 
+        font-weight: 600; 
+        color: #2c3e50;
+    }
+    tr:hover { 
+        background-color: #f1f1f1; 
+    }
+
+    /* 审核状态样式 */
+    .status-pending {
+        color: #f39c12;
+        font-weight: 600;
+    }
+    .status-reviewing {
+        color: #3498db;
+        font-weight: 600;
+    }
+    .status-completed {
+        color: #27ae60;
+        font-weight: 600;
+    }
+
+    /* 分页 */
+    .pagination { 
+        margin-top: 20px; 
+        display: flex; 
+        justify-content: flex-end; 
+        align-items: center; 
+    }
+    .page-btn { 
+        padding: 5px 15px; 
+        border: 1px solid #ddd; 
+        background: white; 
+        text-decoration: none; 
+        color: #333; 
+        margin-left: 5px; 
+        border-radius: 4px; 
+    }
+    .page-btn:hover { 
+        background-color: #f8f9fa; 
+    }
+    .page-info { 
+        margin-right: 15px; 
+        color: #666; 
+    }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 从 Go 模板中获取传递的参数
+    var msg = '{{.ImportMessage}}';
+    var count = {{.ImportCount}};
+
+    if (msg === 'ImportSuccess' && count > 0) {
+        alert('导入成功！共导入 ' + count + ' 条数据。');
+        
+        // 清除 URL 中的参数，防止刷新重复弹窗
+        if (window.history.replaceState) {
+            var url = new URL(window.location.href);
+            url.searchParams.delete('message');
+            url.searchParams.delete('count');
+            window.history.replaceState({path:url.href}, '', url.href);
+        }
+    }
+    
+    if (msg === 'EditSuccess') {
+        alert('审核意见保存成功！');
+        
+        // 清除 URL 中的参数，防止刷新重复弹窗
+        if (window.history.replaceState) {
+            var url = new URL(window.location.href);
+            url.searchParams.delete('message');
+            window.history.replaceState({path:url.href}, '', url.href);
+        }
+    }
+    
+    if (msg === 'DeleteSuccess') {
+        alert('档案删除成功！');
+        
+        // 清除 URL 中的参数，防止刷新重复弹窗
+        if (window.history.replaceState) {
+            var url = new URL(window.location.href);
+            url.searchParams.delete('message');
+            window.history.replaceState({path:url.href}, '', url.href);
+        }
+    }
+
+    // 验证导入表单
+    var importForm = document.getElementById('importForm');
+    if (importForm) {
+        importForm.addEventListener('submit', function(e) {
+            var organization = document.getElementById('organization').value.trim();
+            var fileInput = document.getElementById('upload_file');
+            
+            if (organization === '') {
+                alert('机构名称不能为空！');
+                e.preventDefault();
+                return false;
+            }
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('请选择要导入的Excel文件！');
+                e.preventDefault();
+                return false;
+            }
+            
+            return true;
+        });
+    }
+});
+
+function getStatusClass(status) {
+    var statusMap = {
+        '待审核': 'status-pending',
+        '已审核待整改': 'status-reviewing',
+        '已完成': 'status-completed'
+    };
+    return statusMap[status] || '';
+}
+
+// 确认删除档案
+function confirmDelete(taskId, fileName) {
+    if (confirm('确定要删除档案"' + fileName + '"吗？\n\n此操作将同时删除该档案的所有明细记录，且不可恢复！')) {
+        // 创建表单提交删除请求
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/audit/progress/delete';
+        
+        // 添加task_id参数
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'task_id';
+        input.value = taskId;
+        form.appendChild(input);
+        
+        // 保留查询参数
+        var searchName = new URLSearchParams(window.location.search).get('file_name');
+        if (searchName) {
+            var searchInput = document.createElement('input');
+            searchInput.type = 'hidden';
+            searchInput.name = 'file_name';
+            searchInput.value = searchName;
+            form.appendChild(searchInput);
+        }
+        var auditStatus = new URLSearchParams(window.location.search).get('audit_status');
+        if (auditStatus) {
+            var statusInput = document.createElement('input');
+            statusInput.type = 'hidden';
+            statusInput.name = 'audit_status';
+            statusInput.value = auditStatus;
+            form.appendChild(statusInput);
+        }
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+</head>
+<body>
+    <div class="sidebar">
+        <h3>档案建档统计</h3>
+        <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
+        <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
+        <a href="/checkpoint/filelist" class="submenu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}">卡口建档明细</a>
+        <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
+        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">设备审核进度</a>
+        <a href="/checkpoint/progress" class="submenu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}">卡口审核进度</a>
+        <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
+        <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
+        <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
+    </div>
+
+    <div class="content">
+    <h1>设备审核进度</h1>
+    
+    <!-- 搜索和操作区 -->
+    <div class="search-container">
+        <form class="search-form" action="/audit/progress" method="GET">
+            <input type="text" name="file_name" placeholder="输入档案名称" value="{{.SearchName}}">
+            <label style="font-weight: 600; color: #2c3e50; margin: 0 5px;">审核状态:</label>
+            <select name="audit_status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                <option value="">全部</option>
+                <option value="未审核" {{if eq .AuditStatus "未审核"}}selected{{end}}>未审核</option>
+                <option value="已审核待整改" {{if eq .AuditStatus "已审核待整改"}}selected{{end}}>已审核待整改</option>
+                <option value="已完成" {{if eq .AuditStatus "已完成"}}selected{{end}}>已完成</option>
+            </select>
+            <button type="submit">查询</button>
+            {{if or .SearchName .AuditStatus}}
+            <a href="/audit/progress" style="padding: 8px 15px; background-color: #95a5a6; color: white; text-decoration: none; border-radius: 4px;">清除</a>
+            {{end}}
+        </form>
+
+        <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+            <a href="/audit/progress/download-template" class="action-btn template-btn">下载导入模板</a>
+            <form id="importForm" class="import-form" action="/audit/progress/import" method="POST" enctype="multipart/form-data">
+                <label>机构名称<span class="required">*</span>:</label>
+                <input type="text" id="organization" name="organization" placeholder="请输入机构名称" required>
+                <input type="file" id="upload_file" name="upload_file" accept=".xlsx,.xls" required>
+                <button type="submit" class="action-btn import-btn">导入档案</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 数据表格 -->
+    <table>
+        <thead>
+            <tr>
+                    <th>序号</th>
+                    <th>档案名称</th>
+                    <th>机构名称</th>
+                    <th>导入时间</th>
+                    <th>审核状态</th>
+                    <th>审核意见</th>
+                    <th>审核时间</th>
+                    <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{if .List}}
+                {{range $index, $task := .List}}
+                <tr>
+                    <td>{{$task.ID}}</td>
+                    <td>{{$task.FileName}}</td>
+                    <td>{{$task.Organization}}</td>
+                    <td>{{$task.ImportTime}}</td>
+                    <td>
+                        <span class="{{if eq $task.AuditStatus "未审核"}}status-pending{{else if eq $task.AuditStatus "已审核待整改"}}status-reviewing{{else if eq $task.AuditStatus "已完成"}}status-completed{{end}}">
+                            {{$task.AuditStatus}}
+                        </span>
+                        <span style="margin-left: 8px; color: #666; font-size: 12px;">({{$task.RecordCount}}条)</span>
+                    </td>
+                    <td>
+                        {{if $task.AuditComment.Valid}}
+                            {{$task.AuditComment.String}}
+                        {{else}}
+                            <span style="color: #999;">-</span>
+                        {{end}}
+                    </td>
+                    <td>{{$task.UpdatedAt}}</td>
+                    <td>
+                        <a href="/audit/progress/detail?task_id={{$task.ID}}" style="color: #3498db; text-decoration: none; margin-right: 10px;">查看明细</a>
+                        <a href="/audit/progress/edit?task_id={{$task.ID}}" style="color: #27ae60; text-decoration: none; margin-right: 10px;">编辑</a>
+                        <a href="#" onclick="confirmDelete({{$task.ID}}, '{{$task.FileName}}'); return false;" style="color: #e74c3c; text-decoration: none;">删除</a>
+                    </td>
+                </tr>
+                {{end}}
+            {{else}}
+                <tr>
+                    <td colspan="8" style="text-align: center; color: #999; padding: 40px;">
+                        暂无数据
+                    </td>
+                </tr>
+            {{end}}
+        </tbody>
+    </table>
+
+    <!-- 分页 -->
+    {{if gt .TotalPages 1}}
+    <div class="pagination">
+        <span class="page-info">第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
+        {{if gt .CurrentPage .FirstPage}}
+        <a href="/audit/progress?page={{.FirstPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">首页</a>
+        {{end}}
+        {{if .HasPrev}}
+        <a href="/audit/progress?page={{.PrevPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">上一页</a>
+        {{end}}
+        {{if .HasNext}}
+        <a href="/audit/progress?page={{.NextPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">下一页</a>
+        {{end}}
+        {{if lt .CurrentPage .LastPage}}
+        <a href="/audit/progress?page={{.LastPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">最后一页</a>
+        {{end}}
+    </div>
+    {{end}}
+    </div>
+
+    </div>
+</body>
+</html>
+
+
+
+

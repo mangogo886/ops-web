@@ -1,0 +1,64 @@
+# Nginx 反向代理配置示例
+# 将本文件复制到 /etc/nginx/sites-available/ops-web
+# 然后创建软链接: ln -s /etc/nginx/sites-available/ops-web /etc/nginx/sites-enabled/
+
+server {
+    listen 80;
+    server_name your-domain.com;  # 修改为您的域名
+
+    # 日志
+    access_log /var/log/nginx/ops-web-access.log;
+    error_log /var/log/nginx/ops-web-error.log;
+
+    # 客户端最大上传大小（32MB用于文件导入）
+    client_max_body_size 32M;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # WebSocket支持（如需要）
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # 超时设置
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# HTTPS配置示例（需要SSL证书）
+# server {
+#     listen 443 ssl http2;
+#     server_name your-domain.com;
+# 
+#     ssl_certificate /path/to/cert.pem;
+#     ssl_certificate_key /path/to/key.pem;
+# 
+#     # SSL配置
+#     ssl_protocols TLSv1.2 TLSv1.3;
+#     ssl_ciphers HIGH:!aNULL:!MD5;
+#     ssl_prefer_server_ciphers on;
+# 
+#     location / {
+#         proxy_pass http://127.0.0.1:8080;
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#     }
+# }
+# 
+# # HTTP重定向到HTTPS
+# server {
+#     listen 80;
+#     server_name your-domain.com;
+#     return 301 https://$server_name$request_uri;
+# }
+
+

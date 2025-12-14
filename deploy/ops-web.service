@@ -1,0 +1,27 @@
+[Unit]
+Description=Ops-Web Service - 档案建档统计系统
+After=network.target mysql.service
+Requires=mysql.service
+
+[Service]
+Type=simple
+User=ops
+Group=ops
+WorkingDirectory=/opt/ops-web
+ExecStart=/opt/ops-web/ops-web
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# 安全设置
+NoNewPrivileges=true
+PrivateTmp=true
+
+# 资源限制
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
+
