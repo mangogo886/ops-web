@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"ops-web/internal/auth"
 	"ops-web/internal/db"
 	"ops-web/internal/logger"
@@ -223,27 +224,30 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 	endDateStr := r.URL.Query().Get("end_date")
 	auditStatus := r.URL.Query().Get("audit_status")
 
-	// 如果从 Query 获取不到，尝试从 RawQuery 手动解析（处理 URL 编码问题）
-	if startDateStr == "" && endDateStr == "" && auditStatus == "" && r.URL.RawQuery != "" {
-		// 手动解析 RawQuery
-		rawQuery := r.URL.RawQuery
-		// 处理 URL 编码的 = 号（%3d）
-		rawQuery = strings.ReplaceAll(rawQuery, "%3d", "=")
-		rawQuery = strings.ReplaceAll(rawQuery, "%3D", "=")
+	// 如果从 Query 获取不到参数，但 RawQuery 不为空，尝试从 RawQuery 手动解析（处理 URL 编码问题）
+	if r.URL.RawQuery != "" && (startDateStr == "" || endDateStr == "" || auditStatus == "") {
+		// 先解码URL编码（包括%26=&, %3d==等）
+		decodedQuery, err := url.QueryUnescape(r.URL.RawQuery)
+		if err != nil {
+			// 如果解码失败，尝试手动处理常见的编码
+			decodedQuery = strings.ReplaceAll(r.URL.RawQuery, "%26", "&")
+			decodedQuery = strings.ReplaceAll(decodedQuery, "%3d", "=")
+			decodedQuery = strings.ReplaceAll(decodedQuery, "%3D", "=")
+		}
 		
-		// 解析参数
-		parts := strings.Split(rawQuery, "&")
+		// 解析参数（只填充空值）
+		parts := strings.Split(decodedQuery, "&")
 		for _, part := range parts {
 			if strings.Contains(part, "=") {
 				kv := strings.SplitN(part, "=", 2)
 				if len(kv) == 2 {
 					key := strings.TrimSpace(kv[0])
 					value := strings.TrimSpace(kv[1])
-					if key == "start_date" {
+					if key == "start_date" && startDateStr == "" {
 						startDateStr = value
-					} else if key == "end_date" {
+					} else if key == "end_date" && endDateStr == "" {
 						endDateStr = value
-					} else if key == "audit_status" {
+					} else if key == "audit_status" && auditStatus == "" {
 						auditStatus = value
 					}
 				}

@@ -270,3 +270,4 @@ CREATE TABLE IF NOT EXISTS `checkpoint_details` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='卡口审核明细表';
 
 
+
