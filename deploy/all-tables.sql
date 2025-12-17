@@ -269,5 +269,28 @@ CREATE TABLE IF NOT EXISTS `checkpoint_details` (
   CONSTRAINT `fk_checkpoint_details_task` FOREIGN KEY (`task_id`) REFERENCES `checkpoint_tasks` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='卡口审核明细表';
 
+-- 9. 系统参数设置表
+CREATE TABLE IF NOT EXISTS `system_settings` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '自增ID',
+  `param_key` varchar(100) NOT NULL COMMENT '参数键名',
+  `param_value` text DEFAULT NULL COMMENT '参数值',
+  `description` varchar(255) DEFAULT NULL COMMENT '参数描述',
+  `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_param_key` (`param_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统参数设置表';
+
+-- 插入默认参数（上传文件目录）
+INSERT INTO `system_settings` (`param_key`, `param_value`, `description`) VALUES
+('upload_file_path', '', '上传文件存储目录路径')
+ON DUPLICATE KEY UPDATE `description`=VALUES(`description`);
+
+
+
+
+
+
+
 
 

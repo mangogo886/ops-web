@@ -287,6 +287,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var fileList []FileItemList
 	for rows.Next() {
 		var item FileItemList
+		var updateTimeRaw sql.NullString
 
 		// Scan 参数顺序和数量必须与 SELECT 字段完全匹配
 		err = rows.Scan(
@@ -297,9 +298,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			&item.Monitor_point_Type,
 			&item.ManagementUnit,
 			&item.MaintainUnit,
-			&item.UpdateTime,
+			&updateTimeRaw,
 			&item.AuditStatus,
 		)
+		if err != nil {
+			logger.Errorf("建档明细-数据扫描失败: %v", err)
+			continue
+		}
+		item.UpdateTime = formatDateTime(updateTimeRaw.String)
 
 		if err != nil {
 			fmt.Printf("❌ Database scan error: %v\n", err)
@@ -878,4 +884,33 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		redirectURL += "&device_name=" + searchName
 	}
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+// formatDateTime 格式化时间字符串为 YYYY-MM-DD HH:mm 格式
+// 支持多种输入格式：RFC3339 (2006-01-02T15:04:05Z07:00), MySQL datetime (2006-01-02 15:04:05) 等
+func formatDateTime(timeStr string) string {
+	if timeStr == "" {
+		return ""
+	}
+	
+	// 尝试解析多种时间格式
+	formats := []string{
+		"2006-01-02T15:04:05Z07:00", // RFC3339 with timezone
+		"2006-01-02T15:04:05",       // RFC3339 without timezone
+		"2006-01-02 15:04:05",       // MySQL datetime
+		"2006-01-02 15:04",          // Already formatted
+	}
+	
+	for _, format := range formats {
+		if t, err := time.Parse(format, timeStr); err == nil {
+			return t.Format("2006-01-02 15:04")
+		}
+	}
+	
+	// 如果所有格式都解析失败，尝试截取前16个字符（YYYY-MM-DD HH:mm）
+	if len(timeStr) >= 16 {
+		return timeStr[:16]
+	}
+	
+	return timeStr
 }

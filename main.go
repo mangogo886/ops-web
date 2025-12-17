@@ -14,6 +14,7 @@ import (
     "ops-web/internal/logger"
     "ops-web/internal/operationlog"
     "ops-web/internal/statistics"
+    "ops-web/internal/taskconfig"
     "ops-web/internal/user"
 )
 
@@ -98,6 +99,8 @@ func main() {
     http.HandleFunc("/audit/progress/edit", auth.RequireAuth(auditprogress.EditCommentHandler))
     http.HandleFunc("/audit/progress/delete", auth.RequireAuth(auditprogress.DeleteHandler))
     http.HandleFunc("/audit/progress/download-template", auth.RequireAuth(auditprogress.DownloadTemplateHandler))
+    http.HandleFunc("/audit/progress/upload", auth.RequireAuth(auditprogress.UploadHandler))
+    http.HandleFunc("/audit/progress/download", auth.RequireAuth(auditprogress.DownloadHandler))
     http.HandleFunc("/audit/statistics", auth.RequireAuth(auditstatistics.Handler))
     http.HandleFunc("/audit/statistics/export", auth.RequireAuth(auditstatistics.ExportHandler))
     http.HandleFunc("/audit", auth.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +115,8 @@ func main() {
     http.HandleFunc("/checkpoint/progress/edit", auth.RequireAuth(checkpointprogress.EditCommentHandler))
     http.HandleFunc("/checkpoint/progress/delete", auth.RequireAuth(checkpointprogress.DeleteHandler))
     http.HandleFunc("/checkpoint/progress/download-template", auth.RequireAuth(checkpointprogress.DownloadTemplateHandler))
+    http.HandleFunc("/checkpoint/progress/upload", auth.RequireAuth(checkpointprogress.UploadHandler))
+    http.HandleFunc("/checkpoint/progress/download", auth.RequireAuth(checkpointprogress.DownloadHandler))
 
     // ===== 用户管理路由（需要管理员权限） =====
     http.HandleFunc("/users", auth.RequireAuth(user.Handler))
@@ -121,6 +126,10 @@ func main() {
 
     // ===== 操作日志（需要管理员权限） =====
     http.HandleFunc("/logs", auth.RequireAdmin(operationlog.Handler))
+
+    // ===== 任务配置（需要管理员权限） =====
+    http.HandleFunc("/taskconfig", auth.RequireAdmin(taskconfig.Handler))
+    http.HandleFunc("/taskconfig/save", auth.RequireAdmin(taskconfig.SaveHandler))
 
     // 3. 启动服务
     serverAddr := ":" + db.AppConfig.ServerPort
