@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}} - 档案建档统计</title>
+    <style>
+    body { 
+        margin: 0; 
+        padding: 0; 
+        font-family: "Microsoft YaHei", sans-serif; 
+        display: flex; 
+        height: 100vh; 
+    }
+    
+    /* 左侧导航 */
+    .sidebar { 
+        width: 220px; 
+        background-color: #2c3e50; 
+        color: white; 
+        display: flex; 
+        flex-direction: column; 
+    }
+    .sidebar h3 { 
+        text-align: center; 
+        padding: 20px 0; 
+        border-bottom: 1px solid #34495e; 
+        margin: 0; 
+    }
+    .menu-item { 
+        padding: 15px 20px; 
+        color: #ecf0f1; 
+        text-decoration: none; 
+        display: block; 
+        border-bottom: 1px solid #34495e; 
+    }
+    .menu-item:hover { 
+        background-color: #34495e; 
+    }
+    .menu-item.active { 
+        background-color: #3498db; 
+    }
+    .submenu-item {
+        padding: 12px 20px 12px 40px;
+        font-size: 14px;
+        color: #bdc3c7;
+        text-decoration: none;
+        display: block;
+        border-bottom: 1px solid #34495e;
+    }
+    .submenu-item:hover {
+        background-color: #34495e;
+    }
+    .submenu-item.active {
+        background-color: #2980b9;
+        color: white;
+    }
+    
+    .content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+    }
+    
+    h1 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+    }
+
+    /* 任务信息卡片 */
+    .task-info {
+        background: white;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+    }
+    .task-info-row {
+        display: flex;
+        margin-bottom: 10px;
+    }
+    .task-info-label {
+        font-weight: 600;
+        color: #2c3e50;
+        width: 120px;
+    }
+    .task-info-value {
+        color: #555;
+    }
+    .back-btn {
+        display: inline-block;
+        padding: 8px 15px;
+        background-color: #95a5a6;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .back-btn:hover {
+        background-color: #7f8c8d;
+    }
+
+    /* 表格 */
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        background: white; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+    }
+    th, td { 
+        padding: 12px 15px; 
+        text-align: left; 
+        border-bottom: 1px solid #eee; 
+        font-size: 14px; 
+    }
+    th { 
+        background-color: #f8f9fa; 
+        font-weight: 600; 
+        color: #2c3e50;
+    }
+    tr:hover { 
+        background-color: #f1f1f1; 
+    }
+</style>
+</head>
+<body>
+    <div class="sidebar">
+        <h3>档案建档统计</h3>
+        <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
+        <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
+        <a href="/checkpoint/filelist" class="submenu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}">卡口建档明细</a>
+        <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
+        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">设备审核进度</a>
+        <a href="/checkpoint/progress" class="submenu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}">卡口审核进度</a>
+        <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
+        <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
+        <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/taskconfig" class="submenu-item {{if eq .SubMenu "task_config"}}active{{end}}">任务配置</a>
+        <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
+    </div>
+
+    <div class="content">
+        <a href="/checkpoint/progress" class="back-btn">← 返回卡口审核进度</a>
+        
+        <h1>档案明细 - {{.Task.FileName}}</h1>
+        
+        <!-- 任务信息 -->
+        <div class="task-info">
+            <div class="task-info-row">
+                <span class="task-info-label">档案名称：</span>
+                <span class="task-info-value">{{.Task.FileName}}</span>
+            </div>
+            <div class="task-info-row">
+                <span class="task-info-label">机构名称：</span>
+                <span class="task-info-value">{{.Task.Organization}}</span>
+            </div>
+            <div class="task-info-row">
+                <span class="task-info-label">导入时间：</span>
+                <span class="task-info-value">{{.Task.ImportTime}}</span>
+            </div>
+            <div class="task-info-row">
+                <span class="task-info-label">审核状态：</span>
+                <span class="task-info-value">{{.Task.AuditStatus}}</span>
+            </div>
+            {{if .Task.AuditComment.Valid}}
+            <div class="task-info-row">
+                <span class="task-info-label">审核意见：</span>
+                <span class="task-info-value">{{.Task.AuditComment.String}}</span>
+            </div>
+            {{end}}
+        </div>
+
+        <!-- 导出按钮 -->
+        <div style="margin-bottom: 20px;">
+            <a href="/checkpoint/progress/detail/export?task_id={{.Task.ID}}" class="back-btn" style="background-color: #27ae60; margin-right: 10px;">导出 XLSX</a>
+        </div>
+
+        <!-- 明细表格 -->
+        <table>
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>卡口编码</th>
+                    <th>卡口名称</th>
+                    <th>行政区域</th>
+                    <th>管理单位</th>
+                    <th>卡口点位类型</th>
+                    <th>卡口维护单位</th>
+                    <th>建档状态</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{if .Details}}
+                    {{range $index, $detail := .Details}}
+                    <tr>
+                        <td>{{$detail.ID}}</td>
+                        <td>{{$detail.CheckpointCode}}</td>
+                        <td>{{$detail.CheckpointName}}</td>
+                        <td>{{$detail.DivisionCode}}</td>
+                        <td>{{$detail.ManagementUnit}}</td>
+                        <td>{{$detail.CheckpointPointType}}</td>
+                        <td>{{$detail.CheckpointMaintainUnit}}</td>
+                        <td>{{$detail.AuditStatus | getStatusText}}</td>
+                    </tr>
+                    {{end}}
+                {{else}}
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: #999; padding: 40px;">
+                            暂无明细数据
+                        </td>
+                    </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+
+
+
+

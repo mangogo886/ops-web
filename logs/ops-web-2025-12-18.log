@@ -1,0 +1,11 @@
+2025/12/18 09:22:52 logger.go:43: [ERROR] 设备审核进度-创建文件失败: open D:\code1\upload\东凤分局设备测试数据 \娱乐场所治安管理平台_11月巡检报告.xlsx: The system cannot find the path specified., 路径: D:\code1\upload\东凤分局设备测试数据 \娱乐场所治安管理平台_11月巡检报告.xlsx
+2025/12/18 09:23:12 logger.go:43: [ERROR] 设备审核进度-创建文件失败: open D:\code1\upload\东凤分局设备测试数据 \PLC13.pdf: The system cannot find the path specified., 路径: D:\code1\upload\东凤分局设备测试数据 \PLC13.pdf
+2025/12/18 09:23:55 logger.go:43: [ERROR] 设备审核进度-创建文件失败: open D:\code1\upload\东凤分局设备测试数据 \109-HCIA-Datacom 网络技术学习指南@www.cmsblogs.cn.pdf: The system cannot find the path specified., 路径: D:\code1\upload\东凤分局设备测试数据 \109-HCIA-Datacom 网络技术学习指南@www.cmsblogs.cn.pdf
+2025/12/18 09:48:57 logger.go:43: [ERROR] 初始化审核表-执行SQL语句失败: Error 1060 (42S21): Duplicate column name 'record_count', SQL: ALTER TABLE `audit_tasks` 
+ADD COLUMN `record_count` int(11) NOT NULL DEFAULT 0 COMMENT '导入记录数量' AFTER `audit_status`
+2025/12/18 09:48:57 logger.go:43: [ERROR] 初始化审核表-执行SQL语句失败: Error 1060 (42S21): Duplicate column name 'record_count', SQL: ALTER TABLE `checkpoint_tasks` 
+ADD COLUMN `record_count` int(11) NOT NULL DEFAULT 0 COMMENT '导入记录数量' AFTER `audit_status`
+2025/12/18 09:48:57 logger.go:43: [ERROR] 初始化审核表-执行SQL语句失败: Error 1060 (42S21): Duplicate column name 'record_count', SQL: ALTER TABLE `audit_tasks` 
+ADD COLUMN `record_count` int(11) NOT NULL DEFAULT 0 COMMENT '导入记录数量' AFTER `audit_status`
+2025/12/18 09:48:57 logger.go:43: [ERROR] 初始化审核表-执行SQL语句失败: Error 1060 (42S21): Duplicate column name 'record_count', SQL: ALTER TABLE `checkpoint_tasks` 
+ADD COLUMN `record_count` int(11) NOT NULL DEFAULT 0 COMMENT '导入记录数量' AFTER `audit_status`

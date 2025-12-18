@@ -1,0 +1,48 @@
+2025/12/17 21:46:01 logger.go:43: [ERROR] 初始化审核表-执行SQL语句失败: Error 1060 (42S21): Duplicate column name 'record_count', SQL: ALTER TABLE `audit_tasks` 
+ADD COLUMN `record_count` int(11) NOT NULL DEFAULT 0 COMMENT '导入记录数量' AFTER `audit_status`
+2025/12/17 21:46:01 logger.go:43: [ERROR] 初始化审核表-执行SQL语句失败: Error 1060 (42S21): Duplicate column name 'record_count', SQL: ALTER TABLE `checkpoint_tasks` 
+ADD COLUMN `record_count` int(11) NOT NULL DEFAULT 0 COMMENT '导入记录数量' AFTER `audit_status`
+2025/12/17 21:46:01 logger.go:43: [ERROR] 初始化审核表-执行SQL语句失败: Error 1060 (42S21): Duplicate column name 'record_count', SQL: ALTER TABLE `audit_tasks` 
+ADD COLUMN `record_count` int(11) NOT NULL DEFAULT 0 COMMENT '导入记录数量' AFTER `audit_status`
+2025/12/17 21:46:01 logger.go:43: [ERROR] 初始化审核表-执行SQL语句失败: Error 1060 (42S21): Duplicate column name 'record_count', SQL: ALTER TABLE `checkpoint_tasks` 
+ADD COLUMN `record_count` int(11) NOT NULL DEFAULT 0 COMMENT '导入记录数量' AFTER `audit_status`
+2025/12/17 23:34:03 logger.go:43: [ERROR] 月度建档数据-卡口数据查询失败: Error 1054 (42S22): Unknown column 'ct.archive_type' in 'where clause', SQL: 
+		SELECT 
+			cd.management_unit,
+			cd.checkpoint_point_type
+		FROM checkpoint_details cd
+		INNER JOIN checkpoint_tasks ct ON cd.task_id = ct.id
+		 WHERE 1=1
+		AND ct.archive_type = '新增'
+		ORDER BY cd.management_unit, cd.checkpoint_point_type
+	, Args: []
+2025/12/17 23:34:12 logger.go:43: [ERROR] 月度建档数据-卡口数据查询失败: Error 1054 (42S22): Unknown column 'ct.archive_type' in 'where clause', SQL: 
+		SELECT 
+			cd.management_unit,
+			cd.checkpoint_point_type
+		FROM checkpoint_details cd
+		INNER JOIN checkpoint_tasks ct ON cd.task_id = ct.id
+		 WHERE 1=1
+		AND ct.archive_type = '新增'
+		ORDER BY cd.management_unit, cd.checkpoint_point_type
+	, Args: []
+2025/12/17 23:34:18 logger.go:43: [ERROR] 月度建档数据-卡口数据查询失败: Error 1054 (42S22): Unknown column 'ct.archive_type' in 'where clause', SQL: 
+		SELECT 
+			cd.management_unit,
+			cd.checkpoint_point_type
+		FROM checkpoint_details cd
+		INNER JOIN checkpoint_tasks ct ON cd.task_id = ct.id
+		 WHERE 1=1
+		AND ct.archive_type = '新增'
+		ORDER BY cd.management_unit, cd.checkpoint_point_type
+	, Args: []
+2025/12/17 23:34:21 logger.go:43: [ERROR] 月度建档数据-卡口数据查询失败: Error 1054 (42S22): Unknown column 'ct.archive_type' in 'where clause', SQL: 
+		SELECT 
+			cd.management_unit,
+			cd.checkpoint_point_type
+		FROM checkpoint_details cd
+		INNER JOIN checkpoint_tasks ct ON cd.task_id = ct.id
+		 WHERE 1=1
+		AND ct.archive_type = '新增'
+		ORDER BY cd.management_unit, cd.checkpoint_point_type
+	, Args: []

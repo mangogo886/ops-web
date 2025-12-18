@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}} - 档案建档统计</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: "Microsoft YaHei", sans-serif; 
+            display: flex; 
+            height: 100vh; 
+        }
+        
+        /* 左侧导航 */
+        .sidebar { 
+            width: 220px; 
+            background-color: #2c3e50; 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .sidebar h3 { 
+            text-align: center; 
+            padding: 20px 0; 
+            border-bottom: 1px solid #34495e; 
+            margin: 0; 
+        }
+        .menu-item { 
+            padding: 15px 20px; 
+            color: #ecf0f1; 
+            text-decoration: none; 
+            display: block; 
+            border-bottom: 1px solid #34495e; 
+        }
+        .menu-item:hover { 
+            background-color: #34495e; 
+        }
+        .menu-item.active { 
+            background-color: #3498db; 
+        }
+        
+        /* 子菜单样式 */
+        .submenu-item {
+            padding: 12px 20px 12px 40px;
+            color: #bdc3c7;
+            text-decoration: none;
+            display: block;
+            border-bottom: 1px solid #34495e;
+            font-size: 14px;
+        }
+        .submenu-item:hover {
+            background-color: #34495e;
+        }
+        .submenu-item.active {
+            background-color: #2980b9;
+            color: white;
+        }
+
+        /* 右侧内容 */
+        .content { 
+            flex: 1; 
+            padding: 20px; 
+            overflow-y: auto; 
+            background-color: #f5f6fa; 
+        }
+        
+        /* 标题区 */
+        .page-header {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .page-header h2 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 24px;
+        }
+        
+        /* 查询区域 */
+        .search-container {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .search-form {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+        
+        .search-form label {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .search-form input[type="month"],
+        .search-form select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .search-form button {
+            padding: 8px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .search-form button:hover {
+            background-color: #2980b9;
+        }
+        
+        .search-form .btn-clear {
+            background-color: #95a5a6;
+        }
+        
+        .search-form .btn-clear:hover {
+            background-color: #7f8c8d;
+        }
+        
+        /* 表格容器 */
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            overflow-x: auto;
+        }
+
+        /* 表格 */
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            background: white;
+            min-width: 1200px;
+        }
+        th, td { 
+            padding: 10px 8px; 
+            text-align: center; 
+            border: 1px solid #ddd;
+            font-size: 13px; 
+        }
+        th { 
+            background-color: #3498db; 
+            font-weight: 600; 
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        /* 表头分组样式 */
+        .header-group {
+            background-color: #2980b9;
+        }
+        
+        .sub-header {
+            background-color: #5dade2;
+            font-size: 12px;
+        }
+        
+        tr:hover { 
+            background-color: #f8f9fa; 
+        }
+        
+        /* 汇总行样式 */
+        .summary-row {
+            background-color: #ecf0f1 !important;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .summary-row:hover {
+            background-color: #e0e5e8 !important;
+        }
+        
+        /* 汇总列样式 */
+        .summary-col {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        /* 空数据提示 */
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 16px;
+        }
+        
+        /* 数字样式 */
+        .count-cell {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h3>档案建档统计</h3>
+        <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
+        <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
+        <a href="/checkpoint/filelist" class="submenu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}">卡口建档明细</a>
+        <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
+        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">设备审核进度</a>
+        <a href="/checkpoint/progress" class="submenu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}">卡口审核进度</a>
+        <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
+        <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
+        <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/taskconfig" class="submenu-item {{if eq .SubMenu "task_config"}}active{{end}}">任务配置</a>
+        <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
+    </div>
+
+    <div class="content">
+        
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <h2>月度建档数据</h2>
+        </div>
+
+        <!-- 查询区域 -->
+        <div class="search-container">
+            <form class="search-form" action="/audit/statistics" method="GET">
+                <label>月份查询:</label>
+                <input type="month" name="month" value="{{.Month}}" placeholder="选择月份">
+                
+                <label>建档状态:</label>
+                <select name="audit_status">
+                    <option value="">全部</option>
+                    <option value="0" {{if eq .AuditStatus "0"}}selected{{end}}>未审核未建档</option>
+                    <option value="1" {{if eq .AuditStatus "1"}}selected{{end}}>已审核未建档</option>
+                    <option value="2" {{if eq .AuditStatus "2"}}selected{{end}}>已建档</option>
+                </select>
+                
+                <button type="submit">查询统计</button>
+                {{if or .Month .AuditStatus}}
+                <a href="/audit/statistics" style="padding: 8px 20px; background-color: #95a5a6; color: white; text-decoration: none; border-radius: 4px; display: inline-block;">查询全部</a>
+                {{end}}
+            </form>
+            
+            <!-- 导出按钮 -->
+            <div style="margin-left: auto;">
+                <a href="/audit/statistics/export{{if .Query}}?{{.Query}}{{end}}" class="export-btn" style="padding: 8px 20px; background-color: #27ae60; color: white; text-decoration: none; border-radius: 4px; display: inline-block;">导出Excel</a>
+            </div>
+        </div>
+
+        <!-- 统计表格 -->
+        <div class="table-container">
+            {{if .Stats}}
+            <table>
+                <thead>
+                    <!-- 第一行：主表头 -->
+                    <tr>
+                        <th rowspan="2">分局</th>
+                        <th colspan="4">一类点</th>
+                        <th colspan="4">二类点</th>
+                        <th colspan="4">三类点</th>
+                        <th colspan="3">内部监控</th>
+                        <th rowspan="2">单兵设备</th>
+                        <th colspan="4">汇总</th>
+                    </tr>
+                    <!-- 第二行：子表头 -->
+                    <tr class="sub-header">
+                        <th>视频</th>
+                        <th>人脸</th>
+                        <th>车辆</th>
+                        <th>小计</th>
+                        <th>视频</th>
+                        <th>人脸</th>
+                        <th>车辆</th>
+                        <th>小计</th>
+                        <th>视频</th>
+                        <th>人脸</th>
+                        <th>车辆</th>
+                        <th>小计</th>
+                        <th>视频</th>
+                        <th>人脸</th>
+                        <th>小计</th>
+                        <th>视频</th>
+                        <th>人脸</th>
+                        <th>车辆</th>
+                        <th>总计</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Stats}}
+                    <tr>
+                        <td class="summary-col">{{.ManagementUnit}}</td>
+                        <!-- 一类视频 -->
+                        <td class="count-cell">{{.Type1Video}}</td>
+                        <td class="count-cell">{{.Type1Face}}</td>
+                        <td class="count-cell">{{.Type1Vehicle}}</td>
+                        <td class="summary-col">{{.Type1Total}}</td>
+                        <!-- 二类视频 -->
+                        <td class="count-cell">{{.Type2Video}}</td>
+                        <td class="count-cell">{{.Type2Face}}</td>
+                        <td class="count-cell">{{.Type2Vehicle}}</td>
+                        <td class="summary-col">{{.Type2Total}}</td>
+                        <!-- 三类视频 -->
+                        <td class="count-cell">{{.Type3Video}}</td>
+                        <td class="count-cell">{{.Type3Face}}</td>
+                        <td class="count-cell">{{.Type3Vehicle}}</td>
+                        <td class="summary-col">{{.Type3Total}}</td>
+                        <!-- 内部监控 -->
+                        <td class="count-cell">{{.Type4Video}}</td>
+                        <td class="count-cell">{{.Type4Face}}</td>
+                        <td class="summary-col">{{.Type4Total}}</td>
+                        <!-- 单兵设备 -->
+                        <td class="summary-col">{{.SingleSoldier}}</td>
+                        <!-- 汇总 -->
+                        <td class="summary-col">{{.TotalVideo}}</td>
+                        <td class="summary-col">{{.TotalFace}}</td>
+                        <td class="summary-col">{{.TotalVehicle}}</td>
+                        <td class="summary-col">{{.GrandTotal}}</td>
+                    </tr>
+                    {{end}}
+                    
+                    <!-- 汇总行 -->
+                    <tr class="summary-row">
+                        <td>{{.Summary.ManagementUnit}}</td>
+                        <!-- 一类视频汇总 -->
+                        <td>{{.Summary.Type1Video}}</td>
+                        <td>{{.Summary.Type1Face}}</td>
+                        <td>{{.Summary.Type1Vehicle}}</td>
+                        <td>{{.Summary.Type1Total}}</td>
+                        <!-- 二类视频汇总 -->
+                        <td>{{.Summary.Type2Video}}</td>
+                        <td>{{.Summary.Type2Face}}</td>
+                        <td>{{.Summary.Type2Vehicle}}</td>
+                        <td>{{.Summary.Type2Total}}</td>
+                        <!-- 三类视频汇总 -->
+                        <td>{{.Summary.Type3Video}}</td>
+                        <td>{{.Summary.Type3Face}}</td>
+                        <td>{{.Summary.Type3Vehicle}}</td>
+                        <td>{{.Summary.Type3Total}}</td>
+                        <!-- 内部监控汇总 -->
+                        <td>{{.Summary.Type4Video}}</td>
+                        <td>{{.Summary.Type4Face}}</td>
+                        <td>{{.Summary.Type4Total}}</td>
+                        <!-- 单兵设备汇总 -->
+                        <td>{{.Summary.SingleSoldier}}</td>
+                        <!-- 总计 -->
+                        <td>{{.Summary.TotalVideo}}</td>
+                        <td>{{.Summary.TotalFace}}</td>
+                        <td>{{.Summary.TotalVehicle}}</td>
+                        <td>{{.Summary.GrandTotal}}</td>
+                    </tr>
+                </tbody>
+            </table>
+            {{else}}
+            <div class="no-data">
+                暂无统计数据
+            </div>
+            {{end}}
+        </div>
+
+    </div>
+
+</body>
+</html>
+
+
+
+
+
