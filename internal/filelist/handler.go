@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"ops-web/internal/auth"
 	"ops-web/internal/db"
 	"ops-web/internal/logger"
@@ -577,10 +578,45 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 // --- ExportHandler: 导出 XLSX ---
 
 func ExportHandler(w http.ResponseWriter, r *http.Request) {
+	// 获取查询参数（必须与Handler中的查询条件保持一致）
+	// 先尝试从 URL Query 获取
 	searchCode := r.URL.Query().Get("device_code")
 	searchName := r.URL.Query().Get("device_name")
 	month := r.URL.Query().Get("month")
 	auditStatus := r.URL.Query().Get("audit_status")
+
+	// 如果从 Query 获取不到参数，但 RawQuery 不为空，尝试从 RawQuery 手动解析（处理 URL 编码问题）
+	if r.URL.RawQuery != "" && (searchCode == "" || searchName == "" || month == "" || auditStatus == "") {
+		// 先解码URL编码（包括%26=&, %3d==等）
+		decodedQuery, err := url.QueryUnescape(r.URL.RawQuery)
+		if err != nil {
+			// 如果解码失败，尝试手动处理常见的编码
+			decodedQuery = strings.ReplaceAll(r.URL.RawQuery, "%26", "&")
+			decodedQuery = strings.ReplaceAll(decodedQuery, "%3d", "=")
+			decodedQuery = strings.ReplaceAll(decodedQuery, "%3D", "=")
+		}
+		
+		// 解析参数（只填充空值）
+		parts := strings.Split(decodedQuery, "&")
+		for _, part := range parts {
+			if strings.Contains(part, "=") {
+				kv := strings.SplitN(part, "=", 2)
+				if len(kv) == 2 {
+					key := strings.TrimSpace(kv[0])
+					value := strings.TrimSpace(kv[1])
+					if key == "device_code" && searchCode == "" {
+						searchCode = value
+					} else if key == "device_name" && searchName == "" {
+						searchName = value
+					} else if key == "month" && month == "" {
+						month = value
+					} else if key == "audit_status" && auditStatus == "" {
+						auditStatus = value
+					}
+				}
+			}
+		}
+	}
 
 	// 构造查询条件
 	whereSQL := " WHERE 1=1"
