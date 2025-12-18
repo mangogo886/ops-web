@@ -303,6 +303,7 @@
         <!-- 分页 -->
         <div class="pagination">
             <span class="page-info">第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
+            <span class="page-info" style="margin-left: 15px;">当前页 {{.CurrentPageCount}} 条，共 {{.TotalCount}} 条</span>
             {{if gt .CurrentPage .FirstPage}}
             <a href="/device/filelist?page={{.FirstPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">首页</a>
             {{end}}

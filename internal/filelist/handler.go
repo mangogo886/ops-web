@@ -153,25 +153,27 @@ type FileItemList struct {
 
 // 页面数据结构体
 type PageData struct {
-	Title         string
-	ActiveMenu    string
-	SubMenu       string
-	List          []FileItemList
-	SearchCode    string
-	SearchName    string
-	Month         string // 月份查询条件 (格式: 2024-01)
-	AuditStatus   string // 建档状态查询条件
-	CurrentPage   int
-	TotalPages    int
-	HasPrev       bool
-	HasNext       bool
-	PrevPage      int
-	NextPage      int
-	FirstPage     int
-	LastPage      int
-	Query         string
-	ImportMessage string
-	ImportCount   int
+	Title           string
+	ActiveMenu      string
+	SubMenu         string
+	List            []FileItemList
+	SearchCode      string
+	SearchName      string
+	Month           string // 月份查询条件 (格式: 2024-01)
+	AuditStatus     string // 建档状态查询条件
+	CurrentPage     int
+	TotalPages      int
+	HasPrev         bool
+	HasNext         bool
+	PrevPage        int
+	NextPage        int
+	FirstPage       int
+	LastPage        int
+	Query           string
+	ImportMessage   string
+	ImportCount     int
+	TotalCount      int    // 总记录数
+	CurrentPageCount int   // 当前页记录数
 }
 
 func contains(s, substr string) bool {
@@ -360,25 +362,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// 4. 准备数据并渲染模板
 	data := PageData{
-		Title:         "设备建档明细",
-		ActiveMenu:    "filelist",
-		SubMenu:       "device_filelist",
-		List:          fileList,
-		SearchCode:    searchCode,
-		SearchName:    searchName,
-		Month:         month,
-		AuditStatus:   auditStatus,
-		CurrentPage:   page,
-		TotalPages:    totalPages,
-		HasPrev:       page > 1,
-		HasNext:       page < totalPages,
-		PrevPage:      page - 1,
-		NextPage:      page + 1,
-		FirstPage:     1,
-		LastPage:      totalPages,
-		Query:         query,
-		ImportMessage: importMsg,
-		ImportCount:   importCount,
+		Title:           "设备建档明细",
+		ActiveMenu:      "filelist",
+		SubMenu:         "device_filelist",
+		List:            fileList,
+		SearchCode:      searchCode,
+		SearchName:      searchName,
+		Month:           month,
+		AuditStatus:     auditStatus,
+		CurrentPage:     page,
+		TotalPages:      totalPages,
+		HasPrev:         page > 1,
+		HasNext:         page < totalPages,
+		PrevPage:        page - 1,
+		NextPage:        page + 1,
+		FirstPage:       1,
+		LastPage:        totalPages,
+		Query:           query,
+		ImportMessage:   importMsg,
+		ImportCount:     importCount,
+		TotalCount:      totalCount,
+		CurrentPageCount: len(fileList),
 	}
 
 	// 建档状态转换函数

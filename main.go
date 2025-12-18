@@ -130,6 +130,11 @@ func main() {
     // ===== 任务配置（需要管理员权限） =====
     http.HandleFunc("/taskconfig", auth.RequireAdmin(taskconfig.Handler))
     http.HandleFunc("/taskconfig/save", auth.RequireAdmin(taskconfig.SaveHandler))
+    http.HandleFunc("/taskconfig/backup-database", auth.RequireAdmin(taskconfig.BackupDatabaseHandler))
+    http.HandleFunc("/taskconfig/backup-files", auth.RequireAdmin(taskconfig.BackupFileHandler))
+
+    // 2.1. 初始化定时任务调度器
+    taskconfig.InitScheduler()
 
     // 3. 启动服务
     serverAddr := ":" + db.AppConfig.ServerPort
