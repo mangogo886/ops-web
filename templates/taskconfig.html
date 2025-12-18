@@ -327,6 +327,18 @@ function backupDatabase() {
         form.submit();
     }
 }
+
+function backupFiles() {
+    if (confirm('确定要执行文件备份吗？\n\n备份将复制文件上传路径下的所有文件到备份路径，同文件直接覆盖。')) {
+        // 创建表单提交备份请求
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/taskconfig/backup-files';
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
 </script>
 
 </body>
