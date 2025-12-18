@@ -47,6 +47,9 @@ type PageData struct {
 	ArchiveType   string // 建档类型查询条件
 	CurrentPage   int
 	TotalPages    int
+	TotalCount    int    // 总记录数
+	StartRecord   int    // 当前页起始记录号
+	EndRecord     int    // 当前页结束记录号
 	HasPrev       bool
 	HasNext       bool
 	PrevPage      int
@@ -74,7 +77,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	importCount, _ := strconv.Atoi(importCountStr)
 
-	pageSize := 50
+	pageSize := 30
 	offset := (page - 1) * pageSize
 
 	// 构造查询条件
@@ -122,9 +125,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("审核进度-查询总数失败: %v, SQL: %s, Args: %v", err, countSQL, args)
 		http.Error(w, "查询总数失败: "+err.Error(), http.StatusInternalServerError)
 		return
-	}
-	if totalCount == 0 {
-		totalCount = 1
 	}
 
 	// 2. 分页计算
@@ -242,6 +242,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		operationlog.Record(r, currentUser.Username, action)
 	}
 
+	// 计算当前页记录范围
+	startRecord := (page-1)*pageSize + 1
+	endRecord := page * pageSize
+	if endRecord > totalCount {
+		endRecord = totalCount
+	}
+	if totalCount == 0 {
+		startRecord = 0
+		endRecord = 0
+	}
+
 	// 4. 准备数据并渲染模板
 	data := PageData{
 		Title:         "审核进度",
@@ -253,6 +264,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		ArchiveType:   archiveType,
 		CurrentPage:   page,
 		TotalPages:    totalPages,
+		TotalCount:    totalCount,
+		StartRecord:   startRecord,
+		EndRecord:     endRecord,
 		HasPrev:       page > 1,
 		HasNext:       page < totalPages,
 		PrevPage:      page - 1,

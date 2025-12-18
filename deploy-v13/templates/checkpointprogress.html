@@ -648,7 +648,7 @@ function confirmDelete(taskId, fileName) {
                         <span style="margin-left: 8px; color: #666; font-size: 12px;">({{$task.RecordCount}}条)</span>
                         {{if $task.Attachments}}
                         <span class="attachment-icon" title="有附件" onmouseenter="showAttachmentTooltip(this)" onmouseleave="hideAttachmentTooltip(this)">
-                            📎
+                            📘
                             <div class="attachment-tooltip" onmouseenter="showAttachmentTooltip(this.parentElement)" onmouseleave="hideAttachmentTooltip(this.parentElement)">
                                 <div class="attachment-header">附件列表</div>
                                 <ul class="attachment-list">
@@ -689,23 +689,27 @@ function confirmDelete(taskId, fileName) {
     </table>
 
     <!-- 分页 -->
-    {{if gt .TotalPages 1}}
     <div class="pagination">
-        <span class="page-info">第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
-        {{if gt .CurrentPage .FirstPage}}
-        <a href="/checkpoint/progress?page={{.FirstPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">首页</a>
+        {{if gt .TotalCount 0}}
+        <span class="page-info">显示第 {{.StartRecord}}-{{.EndRecord}} 条，共 {{.TotalCount}} 条记录 | 第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
+        {{else}}
+        <span class="page-info">暂无记录</span>
         {{end}}
-        {{if .HasPrev}}
-        <a href="/checkpoint/progress?page={{.PrevPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">上一页</a>
-        {{end}}
-        {{if .HasNext}}
-        <a href="/checkpoint/progress?page={{.NextPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">下一页</a>
-        {{end}}
-        {{if lt .CurrentPage .LastPage}}
-        <a href="/checkpoint/progress?page={{.LastPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">最后一页</a>
+        {{if gt .TotalPages 1}}
+            {{if gt .CurrentPage .FirstPage}}
+            <a href="/checkpoint/progress?page={{.FirstPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">首页</a>
+            {{end}}
+            {{if .HasPrev}}
+            <a href="/checkpoint/progress?page={{.PrevPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">上一页</a>
+            {{end}}
+            {{if .HasNext}}
+            <a href="/checkpoint/progress?page={{.NextPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">下一页</a>
+            {{end}}
+            {{if lt .CurrentPage .LastPage}}
+            <a href="/checkpoint/progress?page={{.LastPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">最后一页</a>
+            {{end}}
         {{end}}
     </div>
-    {{end}}
     </div>
 
     <!-- 上传文件模态框 -->

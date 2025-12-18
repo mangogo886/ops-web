@@ -386,9 +386,10 @@
         z-index: 1000;
         top: 100%;
         left: 0;
-        margin-top: 5px;
+        margin-top: 0;
+        pointer-events: auto;
     }
-    .attachment-icon:hover .attachment-tooltip {
+    .attachment-tooltip.show {
         display: block;
     }
     .attachment-list {
@@ -646,9 +647,9 @@ function confirmDelete(taskId, fileName) {
                         {{end}}
                         <span style="margin-left: 8px; color: #666; font-size: 12px;">({{$task.RecordCount}}条)</span>
                         {{if $task.Attachments}}
-                        <span class="attachment-icon" title="有附件">
-                            📎
-                            <div class="attachment-tooltip">
+                        <span class="attachment-icon" title="有附件" onmouseenter="showAttachmentTooltip(this)" onmouseleave="hideAttachmentTooltip(this)">
+                            📘
+                            <div class="attachment-tooltip" onmouseenter="showAttachmentTooltip(this.parentElement)" onmouseleave="hideAttachmentTooltip(this.parentElement)">
                                 <div class="attachment-header">附件列表</div>
                                 <ul class="attachment-list">
                                     {{range $task.Attachments}}
@@ -688,23 +689,27 @@ function confirmDelete(taskId, fileName) {
     </table>
 
     <!-- 分页 -->
-    {{if gt .TotalPages 1}}
     <div class="pagination">
-        <span class="page-info">第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
-        {{if gt .CurrentPage .FirstPage}}
-        <a href="/checkpoint/progress?page={{.FirstPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">首页</a>
+        {{if gt .TotalCount 0}}
+        <span class="page-info">显示第 {{.StartRecord}}-{{.EndRecord}} 条，共 {{.TotalCount}} 条记录 | 第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
+        {{else}}
+        <span class="page-info">暂无记录</span>
         {{end}}
-        {{if .HasPrev}}
-        <a href="/checkpoint/progress?page={{.PrevPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">上一页</a>
-        {{end}}
-        {{if .HasNext}}
-        <a href="/checkpoint/progress?page={{.NextPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">下一页</a>
-        {{end}}
-        {{if lt .CurrentPage .LastPage}}
-        <a href="/checkpoint/progress?page={{.LastPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">最后一页</a>
+        {{if gt .TotalPages 1}}
+            {{if gt .CurrentPage .FirstPage}}
+            <a href="/checkpoint/progress?page={{.FirstPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">首页</a>
+            {{end}}
+            {{if .HasPrev}}
+            <a href="/checkpoint/progress?page={{.PrevPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">上一页</a>
+            {{end}}
+            {{if .HasNext}}
+            <a href="/checkpoint/progress?page={{.NextPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">下一页</a>
+            {{end}}
+            {{if lt .CurrentPage .LastPage}}
+            <a href="/checkpoint/progress?page={{.LastPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">最后一页</a>
+            {{end}}
         {{end}}
     </div>
-    {{end}}
     </div>
 
     <!-- 上传文件模态框 -->
@@ -798,6 +803,48 @@ function confirmDelete(taskId, fileName) {
     function downloadAttachment(taskId, fileName) {
         var url = '/checkpoint/progress/download?task_id=' + taskId + '&file_name=' + encodeURIComponent(fileName);
         window.open(url, '_blank');
+    }
+
+    // 附件悬停窗口管理
+    var attachmentTooltipTimers = {};
+
+    // 显示附件悬停窗口
+    function showAttachmentTooltip(container) {
+        // 获取容器ID或使用唯一标识
+        var containerId = container.getAttribute('data-tooltip-id');
+        if (!containerId) {
+            containerId = 'tooltip_' + Math.random().toString(36).substr(2, 9);
+            container.setAttribute('data-tooltip-id', containerId);
+        }
+        
+        // 清除该容器的隐藏定时器
+        if (attachmentTooltipTimers[containerId]) {
+            clearTimeout(attachmentTooltipTimers[containerId]);
+            delete attachmentTooltipTimers[containerId];
+        }
+        
+        var tooltip = container.querySelector('.attachment-tooltip');
+        if (tooltip) {
+            tooltip.classList.add('show');
+        }
+    }
+
+    // 隐藏附件悬停窗口
+    function hideAttachmentTooltip(container) {
+        var containerId = container.getAttribute('data-tooltip-id');
+        if (!containerId) {
+            containerId = 'tooltip_' + Math.random().toString(36).substr(2, 9);
+            container.setAttribute('data-tooltip-id', containerId);
+        }
+        
+        var tooltip = container.querySelector('.attachment-tooltip');
+        if (tooltip) {
+            // 添加小延迟，允许鼠标移动到tooltip上
+            attachmentTooltipTimers[containerId] = setTimeout(function() {
+                tooltip.classList.remove('show');
+                delete attachmentTooltipTimers[containerId];
+            }, 150);
+        }
     }
     </script>
 
