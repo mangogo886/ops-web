@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>{{.Title}} - 档案建档统计</title>
+    <title>{{.Title}} - 档案审核管理</title>
     <style>
     body { 
         margin: 0; 
@@ -124,7 +124,7 @@
 </head>
 <body>
     <div class="sidebar">
-        <h3>档案建档统计</h3>
+        <h3>档案审核管理</h3>
         <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
         <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
         <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
@@ -135,6 +135,7 @@
         <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
         <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
         <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/taskconfig" class="submenu-item {{if eq .SubMenu "task_config"}}active{{end}}">任务配置</a>
         <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
     </div>
 
@@ -169,11 +170,17 @@
             {{end}}
         </div>
 
+        <!-- 导出按钮 -->
+        <div style="margin-bottom: 20px;">
+            <a href="/checkpoint/progress/detail/export?task_id={{.Task.ID}}" class="back-btn" style="background-color: #27ae60; margin-right: 10px;">导出 Excel</a>
+        </div>
+
         <!-- 明细表格 -->
         <table>
             <thead>
                 <tr>
                     <th>序号</th>
+                    <th>卡口编码</th>
                     <th>卡口名称</th>
                     <th>行政区域</th>
                     <th>管理单位</th>
@@ -187,6 +194,7 @@
                     {{range $index, $detail := .Details}}
                     <tr>
                         <td>{{$detail.ID}}</td>
+                        <td>{{$detail.CheckpointCode}}</td>
                         <td>{{$detail.CheckpointName}}</td>
                         <td>{{$detail.DivisionCode}}</td>
                         <td>{{$detail.ManagementUnit}}</td>
@@ -197,7 +205,7 @@
                     {{end}}
                 {{else}}
                     <tr>
-                        <td colspan="7" style="text-align: center; color: #999; padding: 40px;">
+                        <td colspan="8" style="text-align: center; color: #999; padding: 40px;">
                             暂无明细数据
                         </td>
                     </tr>
@@ -207,3 +215,7 @@
     </div>
 </body>
 </html>
+
+
+
+

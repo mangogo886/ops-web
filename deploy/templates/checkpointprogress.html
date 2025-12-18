@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>{{.Title}} - 档案建档统计</title>
+    <title>{{.Title}} - 档案审核管理</title>
     <style>
     body { 
         margin: 0; 
@@ -78,12 +78,13 @@
         align-items: center;
         flex-wrap: nowrap;
         gap: 15px;
+        overflow: hidden;
     }
     .search-form { 
         display: flex; 
         align-items: center; 
-        gap: 10px;
-        flex: 1;
+        gap: 8px;
+        flex: 0 1 auto;
         min-width: 0;
     }
     .search-form input, 
@@ -94,7 +95,7 @@
         border: 1px solid #ddd;
     }
     .search-form input { 
-        width: 180px; 
+        width: 150px; 
         flex-shrink: 0;
     }
     .search-form select {
@@ -119,24 +120,45 @@
     .import-form {
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 10px;
+        gap: 6px;
+        padding: 8px;
         background: #f8f9fa;
         border-radius: 4px;
-        flex-shrink: 0;
+        flex-shrink: 1;
+        min-width: 0;
     }
     .import-form label {
         font-weight: 600;
         color: #2c3e50;
+        white-space: nowrap;
+        font-size: 13px;
     }
     .import-form input[type="text"] {
-        padding: 8px;
+        padding: 6px 8px;
         border: 1px solid #ddd;
         border-radius: 4px;
-        width: 200px;
+        width: 120px;
+        font-size: 13px;
     }
     .import-form input[type="file"] {
-        padding: 8px;
+        padding: 6px;
+        font-size: 13px;
+        width: 140px;
+    }
+    .import-form input[type="checkbox"] {
+        margin-right: 3px;
+    }
+    .import-form select {
+        padding: 6px 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 13px;
+        width: 90px;
+    }
+    .import-form .action-btn {
+        padding: 6px 12px;
+        font-size: 13px;
+        white-space: nowrap;
     }
     .required {
         color: #e74c3c;
@@ -150,14 +172,20 @@
         cursor: pointer;
         display: inline-block;
         text-align: center;
-        padding: 8px 15px;
         border-radius: 4px;
+        padding: 8px 15px;
     }
     .import-btn { 
         background-color: #f39c12; 
     }
     .import-btn:hover { 
         background-color: #e67e22; 
+    }
+    .export-btn {
+        background-color: #27ae60;
+    }
+    .export-btn:hover {
+        background-color: #229954;
     }
     .template-btn { 
         background-color: #3498db; 
@@ -202,6 +230,32 @@
         font-weight: 600;
     }
 
+    /* 档案类型标识 */
+    .archive-type-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-left: 6px;
+        line-height: 1.2;
+    }
+    .archive-type-new {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .archive-type-take {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    .archive-type-supplement {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+
     /* 分页 */
     .pagination { 
         margin-top: 20px; 
@@ -221,9 +275,149 @@
     .page-btn:hover { 
         background-color: #f8f9fa; 
     }
-    .page-info { 
-        margin-right: 15px; 
-        color: #666; 
+    .page-info {
+        margin-right: 15px;
+        color: #666;
+    }
+
+    /* 上传模态框 */
+    .upload-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+    }
+    .upload-modal-content {
+        background-color: #fefefe;
+        margin: 10% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 500px;
+        border-radius: 5px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .upload-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #ddd;
+    }
+    .upload-modal-header h3 {
+        margin: 0;
+        color: #2c3e50;
+    }
+    .close {
+        color: #aaa;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .close:hover,
+    .close:focus {
+        color: #000;
+    }
+    .upload-form-group {
+        margin-bottom: 15px;
+    }
+    .upload-form-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #2c3e50;
+        font-weight: 600;
+    }
+    .upload-form-group input[type="file"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .upload-form-actions {
+        text-align: right;
+        margin-top: 20px;
+    }
+    .upload-btn {
+        padding: 8px 20px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-left: 10px;
+    }
+    .upload-btn:hover {
+        background-color: #2980b9;
+    }
+    .upload-btn-cancel {
+        background-color: #95a5a6;
+    }
+    .upload-btn-cancel:hover {
+        background-color: #7f8c8d;
+    }
+
+    /* 附件标识样式 */
+    .attachment-icon {
+        display: inline-block;
+        margin-left: 8px;
+        cursor: pointer;
+        position: relative;
+        color: #3498db;
+        font-size: 16px;
+    }
+    .attachment-icon:hover {
+        color: #2980b9;
+    }
+    .attachment-tooltip {
+        display: none;
+        position: absolute;
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        padding: 10px;
+        min-width: 200px;
+        max-width: 400px;
+        z-index: 1000;
+        top: 100%;
+        left: 0;
+        margin-top: 5px;
+    }
+    .attachment-icon:hover .attachment-tooltip {
+        display: block;
+    }
+    .attachment-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    .attachment-list li {
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .attachment-list li:last-child {
+        border-bottom: none;
+    }
+    .attachment-list a {
+        color: #3498db;
+        text-decoration: none;
+        word-break: break-all;
+    }
+    .attachment-list a:hover {
+        text-decoration: underline;
+        color: #2980b9;
+    }
+    .attachment-header {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 8px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #ddd;
     }
 </style>
 <script>
@@ -271,10 +465,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (importForm) {
         importForm.addEventListener('submit', function(e) {
             var organization = document.getElementById('organization').value.trim();
+            var archiveType = document.getElementById('archive_type').value;
             var fileInput = document.getElementById('upload_file');
             
             if (organization === '') {
                 alert('机构名称不能为空！');
+                e.preventDefault();
+                return false;
+            }
+            
+            if (archiveType === '') {
+                alert('请选择档案类型！');
                 e.preventDefault();
                 return false;
             }
@@ -331,6 +532,14 @@ function confirmDelete(taskId, fileName) {
             statusInput.value = auditStatus;
             form.appendChild(statusInput);
         }
+        var archiveType = new URLSearchParams(window.location.search).get('archive_type');
+        if (archiveType) {
+            var archiveTypeInput = document.createElement('input');
+            archiveTypeInput.type = 'hidden';
+            archiveTypeInput.name = 'archive_type';
+            archiveTypeInput.value = archiveType;
+            form.appendChild(archiveTypeInput);
+        }
         
         document.body.appendChild(form);
         form.submit();
@@ -340,7 +549,7 @@ function confirmDelete(taskId, fileName) {
 </head>
 <body>
     <div class="sidebar">
-        <h3>档案建档统计</h3>
+        <h3>档案审核管理</h3>
         <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
         <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
         <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
@@ -351,6 +560,7 @@ function confirmDelete(taskId, fileName) {
         <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
         <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
         <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/taskconfig" class="submenu-item {{if eq .SubMenu "task_config"}}active{{end}}">任务配置</a>
         <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
     </div>
 
@@ -368,19 +578,33 @@ function confirmDelete(taskId, fileName) {
                 <option value="已审核待整改" {{if eq .AuditStatus "已审核待整改"}}selected{{end}}>已审核待整改</option>
                 <option value="已完成" {{if eq .AuditStatus "已完成"}}selected{{end}}>已完成</option>
             </select>
+            <label style="font-weight: 600; color: #2c3e50; margin: 0 5px;">建档类型:</label>
+            <select name="archive_type" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                <option value="">全部</option>
+                <option value="新增" {{if eq .ArchiveType "新增"}}selected{{end}}>新增</option>
+                <option value="取推" {{if eq .ArchiveType "取推"}}selected{{end}}>取推</option>
+                <option value="补档案" {{if eq .ArchiveType "补档案"}}selected{{end}}>补档案</option>
+            </select>
             <button type="submit">查询</button>
-            {{if or .SearchName .AuditStatus}}
+            {{if or .SearchName .AuditStatus .ArchiveType}}
             <a href="/checkpoint/progress" style="padding: 8px 15px; background-color: #95a5a6; color: white; text-decoration: none; border-radius: 4px;">清除</a>
             {{end}}
         </form>
 
-        <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
-            <a href="/checkpoint/progress/download-template" class="action-btn template-btn">下载导入模板</a>
+        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 1; min-width: 0;">
+            <a href="/checkpoint/progress/download-template" class="action-btn template-btn" style="white-space: nowrap;">下载模板</a>
             <form id="importForm" class="import-form" action="/checkpoint/progress/import" method="POST" enctype="multipart/form-data">
-                <label>机构名称<span class="required">*</span>:</label>
-                <input type="text" id="organization" name="organization" placeholder="请输入机构名称" required style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 200px;">
+                <label>机构<span class="required">*</span>:</label>
+                <input type="text" id="organization" name="organization" placeholder="机构名称" required>
+                <label>类型<span class="required">*</span>:</label>
+                <select id="archive_type" name="archive_type" required>
+                    <option value="">请选择</option>
+                    <option value="新增">新增</option>
+                    <option value="取推">取推</option>
+                    <option value="补档案">补档案</option>
+                </select>
                 <input type="file" id="upload_file" name="upload_file" accept=".xlsx,.xls" required>
-                <button type="submit" class="action-btn import-btn">导入档案</button>
+                <button type="submit" class="action-btn import-btn">导入</button>
             </form>
         </div>
     </div>
@@ -411,7 +635,31 @@ function confirmDelete(taskId, fileName) {
                         <span class="{{if eq $task.AuditStatus "未审核"}}status-pending{{else if eq $task.AuditStatus "已审核待整改"}}status-reviewing{{else if eq $task.AuditStatus "已完成"}}status-completed{{end}}">
                             {{$task.AuditStatus}}
                         </span>
+                        {{if $task.ArchiveType.Valid}}
+                            {{if eq $task.ArchiveType.String "新增"}}
+                            <span class="archive-type-badge archive-type-new">新</span>
+                            {{else if eq $task.ArchiveType.String "取推"}}
+                            <span class="archive-type-badge archive-type-take">取</span>
+                            {{else if eq $task.ArchiveType.String "补档案"}}
+                            <span class="archive-type-badge archive-type-supplement">补</span>
+                            {{end}}
+                        {{end}}
                         <span style="margin-left: 8px; color: #666; font-size: 12px;">({{$task.RecordCount}}条)</span>
+                        {{if $task.Attachments}}
+                        <span class="attachment-icon" title="有附件">
+                            📎
+                            <div class="attachment-tooltip">
+                                <div class="attachment-header">附件列表</div>
+                                <ul class="attachment-list">
+                                    {{range $task.Attachments}}
+                                    <li>
+                                        <a href="#" onclick="downloadAttachment({{$task.ID}}, '{{.}}'); return false;" target="_blank">{{.}}</a>
+                                    </li>
+                                    {{end}}
+                                </ul>
+                            </div>
+                        </span>
+                        {{end}}
                     </td>
                     <td>
                         {{if $task.AuditComment.Valid}}
@@ -424,6 +672,7 @@ function confirmDelete(taskId, fileName) {
                     <td>
                         <a href="/checkpoint/progress/detail?task_id={{$task.ID}}" style="color: #3498db; text-decoration: none; margin-right: 10px;">查看明细</a>
                         <a href="/checkpoint/progress/edit?task_id={{$task.ID}}" style="color: #27ae60; text-decoration: none; margin-right: 10px;">编辑</a>
+                        <a href="#" onclick="openUploadModal({{$task.ID}}, '{{$task.FileName}}'); return false;" style="color: #9b59b6; text-decoration: none; margin-right: 10px;">上传文件</a>
                         <a href="#" onclick="confirmDelete({{$task.ID}}, '{{$task.FileName}}'); return false;" style="color: #e74c3c; text-decoration: none;">删除</a>
                     </td>
                 </tr>
@@ -458,6 +707,103 @@ function confirmDelete(taskId, fileName) {
     {{end}}
     </div>
 
+    <!-- 上传文件模态框 -->
+    <div id="uploadModal" class="upload-modal">
+        <div class="upload-modal-content">
+            <div class="upload-modal-header">
+                <h3>上传文件</h3>
+                <span class="close" onclick="closeUploadModal()">&times;</span>
+            </div>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <input type="hidden" id="uploadTaskId" name="task_id" value="">
+                <div class="upload-form-group">
+                    <label>档案名称：</label>
+                    <div id="uploadFileName" style="color: #666; margin-bottom: 10px;"></div>
+                </div>
+                <div class="upload-form-group">
+                    <label for="uploadFileInput">选择文件：</label>
+                    <input type="file" id="uploadFileInput" name="upload_file" required>
+                </div>
+                <div class="upload-form-actions">
+                    <button type="button" class="upload-btn upload-btn-cancel" onclick="closeUploadModal()">取消</button>
+                    <button type="submit" class="upload-btn">上传</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    </div>
+
+    <script>
+    // 打开上传模态框
+    function openUploadModal(taskId, fileName) {
+        document.getElementById('uploadTaskId').value = taskId;
+        document.getElementById('uploadFileName').textContent = fileName;
+        document.getElementById('uploadModal').style.display = 'block';
+        document.getElementById('uploadFileInput').value = '';
+    }
+
+    // 关闭上传模态框
+    function closeUploadModal() {
+        document.getElementById('uploadModal').style.display = 'none';
+        document.getElementById('uploadForm').reset();
+    }
+
+    // 点击模态框外部关闭
+    window.onclick = function(event) {
+        var modal = document.getElementById('uploadModal');
+        if (event.target == modal) {
+            closeUploadModal();
+        }
+    }
+
+    // 处理上传表单提交
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        var formData = new FormData(this);
+        var uploadBtn = this.querySelector('button[type="submit"]');
+        var originalText = uploadBtn.textContent;
+        
+        // 禁用按钮并显示上传中
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = '上传中...';
+        
+        fetch('/checkpoint/progress/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('文件上传成功！');
+                closeUploadModal();
+                // 刷新页面
+                window.location.reload();
+            } else {
+                alert('上传失败：' + (data.message || '未知错误'));
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('上传失败：' + error.message);
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = originalText;
+        });
+    });
+
+    // 下载附件
+    function downloadAttachment(taskId, fileName) {
+        var url = '/checkpoint/progress/download?task_id=' + taskId + '&file_name=' + encodeURIComponent(fileName);
+        window.open(url, '_blank');
+    }
+    </script>
+
     </div>
 </body>
 </html>
+
+
+

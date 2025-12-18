@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>{{.Title}} - 档案建档统计</title>
+    <title>{{.Title}} - 档案审核管理</title>
     <style>
         body { 
             margin: 0; 
@@ -199,11 +199,19 @@
 <body>
 
     <div class="sidebar">
-        <h3>档案建档统计</h3>
+        <h3>档案审核管理</h3>
         <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
-        <a href="/stats/weekly" class="submenu-item {{if eq .SubMenu "weekly"}}active{{end}}">按日期统计</a>
-        <a href="/stats/total" class="submenu-item {{if eq .SubMenu "total"}}active{{end}}">建档全量统计</a>
-        <a href="/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
+        <a href="/checkpoint/filelist" class="submenu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}">卡口建档明细</a>
+        <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
+        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">设备审核进度</a>
+        <a href="/checkpoint/progress" class="submenu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}">卡口审核进度</a>
+        <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
+        <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
+        <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/taskconfig" class="submenu-item {{if eq .SubMenu "task_config"}}active{{end}}">任务配置</a>
+        <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
     </div>
 
     <div class="content">
@@ -213,26 +221,38 @@
             <h2>{{.Title}}</h2>
         </div>
 
-        {{if eq .SubMenu "weekly"}}
-        <!-- 日期筛选区 -->
+        <!-- 查询区域 -->
         <div class="date-filter">
-            <form action="/stats/weekly" method="GET" style="display: flex; align-items: center; gap: 15px; flex: 1;">
+            <form action="/stats" method="GET" style="display: flex; align-items: center; gap: 15px; flex: 1; flex-wrap: wrap;">
                 <label>开始日期:</label>
-                <input type="date" name="start_date" value="{{.StartDate}}" required>
+                <input type="date" name="start_date" value="{{.StartDate}}">
                 
                 <label>结束日期:</label>
-                <input type="date" name="end_date" value="{{.EndDate}}" required>
+                <input type="date" name="end_date" value="{{.EndDate}}">
+                
+                <label>建档状态:</label>
+                <select name="audit_status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                    <option value="">全部</option>
+                    <option value="0" {{if eq .AuditStatus "0"}}selected{{end}}>未审核未建档</option>
+                    <option value="1" {{if eq .AuditStatus "1"}}selected{{end}}>已审核未建档</option>
+                    <option value="2" {{if eq .AuditStatus "2"}}selected{{end}}>已建档</option>
+                </select>
                 
                 <button type="submit">查询</button>
+                {{if or .StartDate .EndDate .AuditStatus}}
+                <a href="/stats" style="padding: 8px 15px; background-color: #95a5a6; color: white; text-decoration: none; border-radius: 4px;">清除</a>
+                {{end}}
             </form>
             
-            <div class="quick-select">
-                <button class="quick-btn" onclick="setToday()">今天</button>
-                <button class="quick-btn" onclick="setThisWeek()">本周</button>
-                <button class="quick-btn" onclick="setThisMonth()">本月</button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <div class="quick-select">
+                    <button class="quick-btn" onclick="setToday()">今天</button>
+                    <button class="quick-btn" onclick="setThisWeek()">本周</button>
+                    <button class="quick-btn" onclick="setThisMonth()">本月</button>
+                </div>
+                <a href="/stats/export{{if .Query}}?{{.Query}}{{end}}" style="padding: 8px 20px; background-color: #27ae60; color: white; text-decoration: none; border-radius: 4px; display: inline-block;">导出Excel</a>
             </div>
         </div>
-        {{end}}
 
         <!-- 统计表格 -->
         <div class="table-container">
@@ -241,10 +261,10 @@
                 <thead>
                     <tr>
                         <th>分局</th>
-                        <th>一类视频</th>
-                        <th>二类视频</th>
-                        <th>三类视频</th>
-                        <th>四类视频</th>
+                        <th>一类点</th>
+                        <th>二类点</th>
+                        <th>三类点</th>
+                        <th>四类点</th>
                         <th>合计</th>
                     </tr>
                 </thead>
@@ -284,7 +304,12 @@
         // 快捷日期选择功能
         function setToday() {
             const today = new Date().toISOString().split('T')[0];
-            window.location.href = `/stats/weekly?start_date=${today}&end_date=${today}`;
+            const auditStatus = new URLSearchParams(window.location.search).get('audit_status') || '';
+            let url = `/stats?start_date=${today}&end_date=${today}`;
+            if (auditStatus) {
+                url += `&audit_status=${auditStatus}`;
+            }
+            window.location.href = url;
         }
         
         function setThisWeek() {
@@ -301,7 +326,12 @@
             const start = monday.toISOString().split('T')[0];
             const end = sunday.toISOString().split('T')[0];
             
-            window.location.href = `/stats/weekly?start_date=${start}&end_date=${end}`;
+            const auditStatus = new URLSearchParams(window.location.search).get('audit_status') || '';
+            let url = `/stats?start_date=${start}&end_date=${end}`;
+            if (auditStatus) {
+                url += `&audit_status=${auditStatus}`;
+            }
+            window.location.href = url;
         }
         
         function setThisMonth() {
@@ -312,7 +342,12 @@
             const start = firstDay.toISOString().split('T')[0];
             const end = lastDay.toISOString().split('T')[0];
             
-            window.location.href = `/stats/weekly?start_date=${start}&end_date=${end}`;
+            const auditStatus = new URLSearchParams(window.location.search).get('audit_status') || '';
+            let url = `/stats?start_date=${start}&end_date=${end}`;
+            if (auditStatus) {
+                url += `&audit_status=${auditStatus}`;
+            }
+            window.location.href = url;
         }
     </script>
 

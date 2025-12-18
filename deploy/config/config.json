@@ -3,5 +3,7 @@
   "db_port": "3306",
   "db_user": "root",
   "db_pass": "123456",
-  "db_name": "ops"
+  "db_name": "ops",
+  "server_host": "127.0.0.1",
+  "server_port": "8080"
 }

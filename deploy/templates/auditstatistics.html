@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>{{.Title}} - 档案建档统计</title>
+    <title>{{.Title}} - 档案审核管理</title>
     <style>
         body { 
             margin: 0; 
@@ -215,7 +215,7 @@
 <body>
 
     <div class="sidebar">
-        <h3>档案建档统计</h3>
+        <h3>档案审核管理</h3>
         <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
         <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
         <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
@@ -226,6 +226,7 @@
         <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
         <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
         <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/taskconfig" class="submenu-item {{if eq .SubMenu "task_config"}}active{{end}}">任务配置</a>
         <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
     </div>
 
@@ -270,10 +271,11 @@
                     <!-- 第一行：主表头 -->
                     <tr>
                         <th rowspan="2">分局</th>
-                        <th colspan="4">一类视频</th>
-                        <th colspan="4">二类视频</th>
-                        <th colspan="4">三类视频</th>
-                        <th colspan="4">四类视频</th>
+                        <th colspan="4">一类点</th>
+                        <th colspan="4">二类点</th>
+                        <th colspan="4">三类点</th>
+                        <th colspan="3">内部监控</th>
+                        <th rowspan="2">单兵设备</th>
                         <th colspan="4">汇总</th>
                     </tr>
                     <!-- 第二行：子表头 -->
@@ -292,7 +294,6 @@
                         <th>小计</th>
                         <th>视频</th>
                         <th>人脸</th>
-                        <th>车辆</th>
                         <th>小计</th>
                         <th>视频</th>
                         <th>人脸</th>
@@ -319,11 +320,12 @@
                         <td class="count-cell">{{.Type3Face}}</td>
                         <td class="count-cell">{{.Type3Vehicle}}</td>
                         <td class="summary-col">{{.Type3Total}}</td>
-                        <!-- 四类视频 -->
+                        <!-- 内部监控 -->
                         <td class="count-cell">{{.Type4Video}}</td>
                         <td class="count-cell">{{.Type4Face}}</td>
-                        <td class="count-cell">{{.Type4Vehicle}}</td>
                         <td class="summary-col">{{.Type4Total}}</td>
+                        <!-- 单兵设备 -->
+                        <td class="summary-col">{{.SingleSoldier}}</td>
                         <!-- 汇总 -->
                         <td class="summary-col">{{.TotalVideo}}</td>
                         <td class="summary-col">{{.TotalFace}}</td>
@@ -350,11 +352,12 @@
                         <td>{{.Summary.Type3Face}}</td>
                         <td>{{.Summary.Type3Vehicle}}</td>
                         <td>{{.Summary.Type3Total}}</td>
-                        <!-- 四类视频汇总 -->
+                        <!-- 内部监控汇总 -->
                         <td>{{.Summary.Type4Video}}</td>
                         <td>{{.Summary.Type4Face}}</td>
-                        <td>{{.Summary.Type4Vehicle}}</td>
                         <td>{{.Summary.Type4Total}}</td>
+                        <!-- 单兵设备汇总 -->
+                        <td>{{.Summary.SingleSoldier}}</td>
                         <!-- 总计 -->
                         <td>{{.Summary.TotalVideo}}</td>
                         <td>{{.Summary.TotalFace}}</td>
@@ -374,5 +377,8 @@
 
 </body>
 </html>
+
+
+
 
 

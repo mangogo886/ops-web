@@ -32,19 +32,18 @@ func main() {
     }
     defer db.DBInstance.Close()
     
-    // 1.1. 初始化审核相关的数据库表
-    if err := db.InitAuditTables(); err != nil {
-        logger.Errorf("初始化审核表失败: %v", err)
-        log.Printf("警告: 初始化审核表失败: %v", err)
-        // 不中断程序运行，允许用户手动创建表
-    }
+    // 注意：DDL依赖已关闭，请手动执行SQL脚本创建数据库表
+    // 1.1. 初始化审核相关的数据库表（已禁用，请手动执行SQL）
+    // if err := db.InitAuditTables(); err != nil {
+    //     logger.Errorf("初始化审核表失败: %v", err)
+    //     log.Printf("警告: 初始化审核表失败: %v", err)
+    // }
     
-    // 1.2. 初始化卡口审核相关的数据库表
-    if err := db.InitCheckpointTables(); err != nil {
-        logger.Errorf("初始化卡口审核表失败: %v", err)
-        log.Printf("警告: 初始化卡口审核表失败: %v", err)
-        // 不中断程序运行，允许用户手动创建表
-    }
+    // 1.2. 初始化卡口审核相关的数据库表（已禁用，请手动执行SQL）
+    // if err := db.InitCheckpointTables(); err != nil {
+    //     logger.Errorf("初始化卡口审核表失败: %v", err)
+    //     log.Printf("警告: 初始化卡口审核表失败: %v", err)
+    // }
 
     // 2. 注册路由
     

@@ -2,6 +2,7 @@ package auditprogress
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -311,8 +312,8 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 获取文件名（不含路径）
 	fileName := fileHeader.Filename
-	// 去除扩展名，只保留文件名部分作为档案名称
-	fileNameWithoutExt := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+	// 去除扩展名，只保留文件名部分作为档案名称，并去除前后空格
+	fileNameWithoutExt := strings.TrimSpace(strings.TrimSuffix(fileName, filepath.Ext(fileName)))
 
 	// 解析Excel文件
 	f, err := excelize.OpenReader(file)
@@ -511,7 +512,7 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 记录导入操作日志
 	if currentUser := auth.GetCurrentUser(r); currentUser != nil {
-		action := fmt.Sprintf("导入审核档案 Excel（档案名称：%s，机构：%s，共 %d 条数据）", fileNameWithoutExt, organization, importedCount)
+		action := fmt.Sprintf("导入审核档案 Excel（档案名称：%s，机构：%s，是否单兵设备：%d，档案类型：%s，共 %d 条数据）", fileNameWithoutExt, organization, isSingleSoldier, archiveType, importedCount)
 		operationlog.Record(r, currentUser.Username, action)
 	}
 
@@ -1142,31 +1143,51 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	taskID, err := strconv.Atoi(taskIDStr)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"success": false, "message": "无效的任务ID"}`))
+		response := map[string]interface{}{
+			"success": false,
+			"message": "无效的任务ID",
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	// 查询档案名称
+	// 查询档案名称和单兵设备信息
 	var fileName string
-	query := "SELECT file_name FROM audit_tasks WHERE id = ?"
-	err = db.DBInstance.QueryRow(query, taskID).Scan(&fileName)
+	var isSingleSoldier int
+	query := "SELECT file_name, is_single_soldier FROM audit_tasks WHERE id = ?"
+	err = db.DBInstance.QueryRow(query, taskID).Scan(&fileName, &isSingleSoldier)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(`{"success": false, "message": "档案不存在"}`))
+			response := map[string]interface{}{
+				"success": false,
+				"message": "档案不存在",
+			}
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 		logger.Errorf("设备审核进度-查询档案名称失败: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"success": false, "message": "查询档案失败"}`))
+		response := map[string]interface{}{
+			"success": false,
+			"message": "查询档案失败",
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
+
+	// 去除档案名称的前后空格，避免路径问题
+	fileName = strings.TrimSpace(fileName)
 
 	// 获取上传文件
 	file, header, err := r.FormFile("upload_file")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"success": false, "message": "获取上传文件失败: ` + err.Error() + `"}`))
+		response := map[string]interface{}{
+			"success": false,
+			"message": "获取上传文件失败: " + err.Error(),
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 	defer file.Close()
@@ -1175,17 +1196,25 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	uploadPath := getUploadPath()
 	if uploadPath == "" {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"success": false, "message": "未配置上传路径，请先在任务配置中设置"}`))
+		response := map[string]interface{}{
+			"success": false,
+			"message": "未配置上传路径，请先在任务配置中设置",
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	// 创建以档案名称命名的目录
+	// 创建以档案名称命名的目录（去除前后空格）
 	targetDir := filepath.Join(uploadPath, fileName)
 	err = createDirIfNotExists(targetDir)
 	if err != nil {
 		logger.Errorf("设备审核进度-创建目录失败: %v, 路径: %s", err, targetDir)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"success": false, "message": "创建目录失败: ` + err.Error() + `"}`))
+		response := map[string]interface{}{
+			"success": false,
+			"message": "创建目录失败: " + err.Error(),
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 
@@ -1195,7 +1224,11 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("设备审核进度-创建文件失败: %v, 路径: %s", err, targetFile)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"success": false, "message": "保存文件失败: ` + err.Error() + `"}`))
+		response := map[string]interface{}{
+			"success": false,
+			"message": "保存文件失败: " + err.Error(),
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 	defer dst.Close()
@@ -1204,17 +1237,25 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("设备审核进度-写入文件失败: %v, 路径: %s", err, targetFile)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"success": false, "message": "写入文件失败: ` + err.Error() + `"}`))
+		response := map[string]interface{}{
+			"success": false,
+			"message": "写入文件失败: " + err.Error(),
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 
 	// 记录操作日志
-	action := fmt.Sprintf("上传文件（档案：%s，文件名：%s）", fileName, header.Filename)
+	action := fmt.Sprintf("上传文件（档案：%s，文件名：%s，是否单兵设备：%d）", fileName, header.Filename, isSingleSoldier)
 	operationlog.Record(r, currentUser.Username, action)
 
 	// 返回成功响应
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"success": true, "message": "文件上传成功"}`))
+	response := map[string]interface{}{
+		"success": true,
+		"message": "文件上传成功",
+	}
+	json.NewEncoder(w).Encode(response)
 }
 
 // getUploadPath 获取上传路径配置

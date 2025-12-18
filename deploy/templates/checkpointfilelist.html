@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>{{.Title}} - 档案建档统计</title>
+    <title>{{.Title}} - 档案审核管理</title>
     <style>
         body { 
             margin: 0; 
@@ -168,7 +168,7 @@
 <body>
 
     <div class="sidebar">
-        <h3>档案建档统计</h3>
+        <h3>档案审核管理</h3>
         <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
         <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
         <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
@@ -179,6 +179,7 @@
         <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
         <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
         <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/taskconfig" class="submenu-item {{if eq .SubMenu "task_config"}}active{{end}}">任务配置</a>
         <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
     </div>
 
@@ -206,7 +207,7 @@
             </form>
 
             <div class="search-form">
-                <a href="/checkpoint/filelist/export{{if .Query}}?{{.Query}}{{end}}" class="action-btn export-btn">导出 XLSX</a>
+                <a href="/checkpoint/filelist/export{{if .Query}}?{{.Query}}{{end}}" class="action-btn export-btn">导出 Excel</a>
             </div>
         </div>
 
@@ -249,6 +250,7 @@
         <!-- 分页 -->
         <div class="pagination">
             <span class="page-info">第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
+            <span class="page-info" style="margin-left: 15px;">当前页 {{.CurrentPageCount}} 条，共 {{.TotalCount}} 条</span>
             {{if gt .CurrentPage .FirstPage}}
             <a href="/checkpoint/filelist?page={{.FirstPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">首页</a>
             {{end}}
@@ -267,3 +269,7 @@
 
 </body>
 </html>
+
+
+
+
