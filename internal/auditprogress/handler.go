@@ -629,6 +629,21 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// 保存审核意见历史记录（如果内容有变化）
+		currentUser := auth.GetCurrentUser(r)
+		err = SaveAuditHistory(tx, taskID, auditComment, auditStatus, currentUser)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				tx.Rollback()
+				http.Error(w, "档案不存在", http.StatusBadRequest)
+				return
+			}
+			tx.Rollback()
+			logger.Errorf("保存审核意见历史失败: %v, taskID: %d", err, taskID)
+			http.Error(w, "保存审核意见历史失败: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		// 更新审核意见和状态
 		updateSQL := `UPDATE audit_tasks SET audit_comment = ?, audit_status = ?, updated_at = NOW() WHERE id = ?`
 		var comment interface{}
@@ -685,6 +700,78 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Error(w, "不支持的请求方法", http.StatusMethodNotAllowed)
+}
+
+// AuditHistoryHandler: 查看审核意见历史记录（返回JSON格式，用于弹窗显示）
+func AuditHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	taskIDStr := r.URL.Query().Get("task_id")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"success": false, "message": "无效的任务ID"}`))
+		return
+	}
+
+	// 验证任务是否存在
+	var exists int
+	err = db.DBInstance.QueryRow("SELECT COUNT(*) FROM audit_tasks WHERE id = ?", taskID).Scan(&exists)
+	if err != nil || exists == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"success": false, "message": "档案不存在"}`))
+		return
+	}
+
+	// 查询历史记录
+	historyList, err := GetAuditHistory(taskID)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"success": false, "message": "查询审核意见历史失败"}`))
+		return
+	}
+
+	// 转换为JSON格式（处理sql.NullString）
+	type HistoryItemJSON struct {
+		ID           int    `json:"id"`
+		AuditComment string `json:"audit_comment"`
+		AuditStatus  string `json:"audit_status"`
+		Auditor      string `json:"auditor"`
+		AuditTime    string `json:"audit_time"`
+	}
+
+	var historyJSON []HistoryItemJSON
+	for _, item := range historyList {
+		comment := ""
+		if item.AuditComment.Valid {
+			comment = item.AuditComment.String
+		}
+		historyJSON = append(historyJSON, HistoryItemJSON{
+			ID:           item.ID,
+			AuditComment: comment,
+			AuditStatus:  item.AuditStatus,
+			Auditor:      item.Auditor,
+			AuditTime:    item.AuditTime,
+		})
+	}
+
+	// 返回JSON
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	response := map[string]interface{}{
+		"success": true,
+		"data":    historyJSON,
+	}
+	
+	jsonData, err := json.Marshal(response)
+	if err != nil {
+		logger.Errorf("JSON序列化失败: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"success": false, "message": "数据序列化失败"}`))
+		return
+	}
+
+	w.Write(jsonData)
 }
 
 // 辅助函数：获取行值（安全地获取，防止索引越界）

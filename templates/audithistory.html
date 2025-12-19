@@ -99,28 +99,75 @@
         background-color: #7f8c8d;
     }
 
-    /* 表格 */
-    table { 
-        width: 100%; 
-        border-collapse: collapse; 
-        background: white; 
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+    /* 历史记录列表 */
+    .history-list {
+        background: white;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        overflow: hidden;
     }
-    th, td { 
-        padding: 12px 15px; 
-        text-align: left; 
-        border-bottom: 1px solid #eee; 
-        font-size: 14px; 
+    .history-item {
+        border-bottom: 2px solid #ecf0f1;
+        padding: 20px;
     }
-    th { 
-        background-color: #f8f9fa; 
-        font-weight: 600; 
+    .history-item:last-child {
+        border-bottom: none;
+    }
+    .history-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #ecf0f1;
+    }
+    .history-item-time {
+        font-weight: 600;
         color: #2c3e50;
+        font-size: 16px;
     }
-    tr:hover { 
-        background-color: #f1f1f1; 
+    .history-item-meta {
+        display: flex;
+        gap: 20px;
+        font-size: 14px;
+        color: #7f8c8d;
     }
-
+    .history-item-status {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .history-item-status.未审核 {
+        background-color: #ecf0f1;
+        color: #34495e;
+    }
+    .history-item-status.已审核待整改 {
+        background-color: #f39c12;
+        color: white;
+    }
+    .history-item-status.已完成 {
+        background-color: #27ae60;
+        color: white;
+    }
+    .history-item-comment {
+        color: #555;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    .history-item-comment:empty::before {
+        content: "（无审核意见）";
+        color: #95a5a6;
+        font-style: italic;
+    }
+    .no-history {
+        text-align: center;
+        padding: 60px 20px;
+        color: #95a5a6;
+        font-size: 16px;
+    }
 </style>
 </head>
 <body>
@@ -143,7 +190,7 @@
     <div class="content">
         <a href="/audit/progress" class="back-btn">← 返回设备审核进度</a>
         
-        <h1>档案明细 - {{.Task.FileName}}</h1>
+        <h1>审核意见历史记录 - {{.Task.FileName}}</h1>
         
         <!-- 任务信息 -->
         <div class="task-info">
@@ -159,70 +206,32 @@
                 <span class="task-info-label">导入时间：</span>
                 <span class="task-info-value">{{.Task.ImportTime}}</span>
             </div>
-            <div class="task-info-row">
-                <span class="task-info-label">审核状态：</span>
-                <span class="task-info-value">{{.Task.AuditStatus}}</span>
-            </div>
-            {{if .Task.AuditComment.Valid}}
-            <div class="task-info-row">
-                <span class="task-info-label">审核意见：</span>
-                <span class="task-info-value">{{.Task.AuditComment.String}}</span>
-            </div>
+        </div>
+
+        <!-- 历史记录列表 -->
+        <div class="history-list">
+            {{if .History}}
+                {{range $index, $item := .History}}
+                <div class="history-item">
+                    <div class="history-item-header">
+                        <span class="history-item-time">{{$item.AuditTime}}</span>
+                        <div class="history-item-meta">
+                            <span>审核人：{{$item.Auditor}}</span>
+                            <span class="history-item-status {{$item.AuditStatus}}">{{$item.AuditStatus}}</span>
+                        </div>
+                    </div>
+                    <div class="history-item-comment">
+                        {{if $item.AuditComment.Valid}}{{$item.AuditComment.String}}{{end}}
+                    </div>
+                </div>
+                {{end}}
+            {{else}}
+                <div class="no-history">
+                    暂无审核意见历史记录
+                </div>
             {{end}}
         </div>
-
-        <!-- 操作按钮 -->
-        <div style="margin-bottom: 20px;">
-            <a href="/audit/progress/detail/export?task_id={{.Task.ID}}" class="back-btn" style="background-color: #27ae60; margin-right: 10px;">导出 Excel</a>
-        </div>
-
-        <!-- 明细表格 -->
-        <table>
-            <thead>
-                <tr>
-                    <th>序号</th>
-                    <th>设备编码</th>
-                    <th>设备名称</th>
-                    <th>行政区划编码</th>
-                    <th>监控点类型</th>
-                    <th>管理单位</th>
-                    <th>维护单位</th>
-                    <th>摄像机功能类型</th>
-                    <th>建档状态</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{if .Details}}
-                    {{range $index, $detail := .Details}}
-                    <tr>
-                        <td>{{$detail.ID}}</td>
-                        <td>{{$detail.DeviceCode}}</td>
-                        <td>{{$detail.DeviceName}}</td>
-                        <td>{{$detail.DivisionCode}}</td>
-                        <td>{{$detail.MonitorPointType}}</td>
-                        <td>{{$detail.ManagementUnit}}</td>
-                        <td>{{$detail.MaintainUnit}}</td>
-                        <td>{{$detail.CameraFunctionType}}</td>
-                        <td>{{$detail.AuditStatus | getStatusText}}</td>
-                    </tr>
-                    {{end}}
-                {{else}}
-                    <tr>
-                        <td colspan="9" style="text-align: center; color: #999; padding: 40px;">
-                            暂无明细数据
-                        </td>
-                    </tr>
-                {{end}}
-            </tbody>
-        </table>
     </div>
 </body>
 </html>
-
-
-
-
-
-
-
 

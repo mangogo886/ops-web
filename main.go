@@ -96,6 +96,7 @@ func main() {
     http.HandleFunc("/audit/progress/detail", auth.RequireAuth(auditprogress.DetailHandler))
     http.HandleFunc("/audit/progress/detail/export", auth.RequireAuth(auditprogress.DetailExportHandler))
     http.HandleFunc("/audit/progress/edit", auth.RequireAuth(auditprogress.EditCommentHandler))
+    http.HandleFunc("/audit/progress/history", auth.RequireAuth(auditprogress.AuditHistoryHandler))
     http.HandleFunc("/audit/progress/delete", auth.RequireAuth(auditprogress.DeleteHandler))
     http.HandleFunc("/audit/progress/download-template", auth.RequireAuth(auditprogress.DownloadTemplateHandler))
     http.HandleFunc("/audit/progress/upload", auth.RequireAuth(auditprogress.UploadHandler))

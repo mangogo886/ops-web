@@ -630,8 +630,6 @@ function confirmDelete(taskId, fileName) {
             <tr>
                     <th>序号</th>
                     <th>档案名称</th>
-                    <th>机构名称</th>
-                    <th>导入时间</th>
                     <th>审核状态</th>
                     <th>审核意见</th>
                     <th>审核时间</th>
@@ -644,8 +642,6 @@ function confirmDelete(taskId, fileName) {
                 <tr>
                     <td>{{$task.ID}}</td>
                     <td>{{$task.FileName}}</td>
-                    <td>{{$task.Organization}}</td>
-                    <td>{{$task.ImportTime}}</td>
                     <td>
                         <span class="{{if eq $task.AuditStatus "未审核"}}status-pending{{else if eq $task.AuditStatus "已审核待整改"}}status-reviewing{{else if eq $task.AuditStatus "已完成"}}status-completed{{end}}">
                             {{$task.AuditStatus}}
@@ -697,7 +693,7 @@ function confirmDelete(taskId, fileName) {
                 {{end}}
             {{else}}
                 <tr>
-                    <td colspan="8" style="text-align: center; color: #999; padding: 40px;">
+                    <td colspan="6" style="text-align: center; color: #999; padding: 40px;">
                         暂无数据
                     </td>
                 </tr>
