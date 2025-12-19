@@ -24,10 +24,11 @@ type CheckpointFileItemList struct {
 	CheckpointName        string
 	DivisionCode          string
 	CheckpointPointType   string
-	ManagementUnit        string
+	ManagementUnit        string // 现在显示checkpoint_tasks.organization的值
 	CheckpointMaintainUnit string
 	UpdateTime            string
 	AuditStatus           int // 建档状态：0-未审核未建档，1-已审核未建档，2-已建档
+	FileName              string // 所属任务档案（checkpoint_tasks.file_name）
 }
 
 // 导出时使用的完整结构体（包含所有字段，除了task_id）
@@ -167,23 +168,23 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	pageSize := 50
 	offset := (page - 1) * pageSize
 
-	// 构造查询条件
+	// 构造查询条件（使用表别名）
 	whereSQL := " WHERE 1=1"
 	args := []interface{}{}
 
 	if searchCode != "" {
-		whereSQL += " AND checkpoint_code LIKE ?"
+		whereSQL += " AND cd.checkpoint_code LIKE ?"
 		args = append(args, "%"+searchCode+"%")
 	}
 	if searchName != "" {
-		whereSQL += " AND checkpoint_name LIKE ?"
+		whereSQL += " AND cd.checkpoint_name LIKE ?"
 		args = append(args, "%"+searchName+"%")
 	}
 
 	// 月份查询：根据update_time按月份
 	if month != "" {
 		if _, err := time.Parse("2006-01", month); err == nil {
-			whereSQL += " AND YEAR(update_time) = ? AND MONTH(update_time) = ?"
+			whereSQL += " AND YEAR(cd.update_time) = ? AND MONTH(cd.update_time) = ?"
 			parts := strings.Split(month, "-")
 			if len(parts) == 2 {
 				year, _ := strconv.Atoi(parts[0])
@@ -197,14 +198,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if auditStatus != "" {
 		statusInt, err := strconv.Atoi(auditStatus)
 		if err == nil && (statusInt == 0 || statusInt == 1 || statusInt == 2) {
-			whereSQL += " AND audit_status = ?"
+			whereSQL += " AND cd.audit_status = ?"
 			args = append(args, statusInt)
 		}
 	}
 
-	// 1. 查询总记录数
+	// 1. 查询总记录数（使用表别名）
 	var totalCount int
-	countSQL := "SELECT COUNT(*) FROM checkpoint_details" + whereSQL
+	countSQL := "SELECT COUNT(*) FROM checkpoint_details cd LEFT JOIN checkpoint_tasks ct ON cd.task_id = ct.id" + whereSQL
 	err := db.DBInstance.QueryRow(countSQL, args...).Scan(&totalCount)
 	if err != nil && err != sql.ErrNoRows {
 		logger.Errorf("卡口建档明细-查询总数失败: %v, SQL: %s, Args: %v", err, countSQL, args)
@@ -224,9 +225,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		page = totalPages
 	}
 
-	// 3. 查询列表数据
-	queryFields := "id, checkpoint_code, checkpoint_name, division_code, checkpoint_point_type, management_unit, checkpoint_maintain_unit, update_time, audit_status"
-	querySQL := fmt.Sprintf("SELECT %s FROM checkpoint_details %s ORDER BY id DESC LIMIT ? OFFSET ?", queryFields, whereSQL)
+	// 3. 查询列表数据（关联checkpoint_tasks表获取organization和file_name）
+	queryFields := "cd.id, cd.checkpoint_code, cd.checkpoint_name, cd.division_code, cd.checkpoint_point_type, COALESCE(ct.organization, cd.management_unit) as management_unit, cd.checkpoint_maintain_unit, cd.update_time, cd.audit_status, COALESCE(ct.file_name, '') as file_name"
+	querySQL := fmt.Sprintf("SELECT %s FROM checkpoint_details cd LEFT JOIN checkpoint_tasks ct ON cd.task_id = ct.id %s ORDER BY cd.id DESC LIMIT ? OFFSET ?", queryFields, whereSQL)
 
 	// 准备完整的参数列表
 	queryArgs := append(args, pageSize, offset)
@@ -254,6 +255,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			&item.CheckpointMaintainUnit,
 			&updateTimeRaw,
 			&item.AuditStatus,
+			&item.FileName,
 		)
 		if err != nil {
 			logger.Errorf("卡口建档明细-数据扫描失败: %v", err)

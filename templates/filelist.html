@@ -271,10 +271,9 @@
                     <th>序号</th>
                     <th>设备编码</th>
                     <th>设备名称</th>
-                    <th>行政区划编码</th>
 					<th>监控点类型</th>
                     <th>管理单位</th>
-                    <th>维护单位</th>
+                    <th>所属任务档案</th>
                     <th>建档状态</th>
                     <th>更新时间</th>
                 </tr>
@@ -285,16 +284,15 @@
                     <td>{{.ID}}</td>
                     <td>{{.DeviceCode}}</td>
                     <td>{{.DeviceName}}</td>
-                    <td>{{.DivisionCode}}</td>
 					<td>{{.Monitor_point_Type}}</td>
                     <td>{{.ManagementUnit}}</td>
-                    <td>{{.MaintainUnit}}</td>
+                    <td>{{.FileName}}</td>
                     <td>{{getAuditStatusText .AuditStatus}}</td>
                     <td>{{.UpdateTime}}</td>
                 </tr>
                 {{else}}
                 <tr>
-                    <td colspan="9" style="text-align: center; padding: 20px; color: #999;">暂无数据</td>
+                    <td colspan="8" style="text-align: center; padding: 20px; color: #999;">暂无数据</td>
                 </tr>
                 {{end}}
             </tbody>

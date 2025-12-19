@@ -1222,7 +1222,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
-// UploadHandler 处理文件上传
+// UploadHandler 处理文件上传（支持单个文件和目录上传）
 func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "方法不允许", http.StatusMethodNotAllowed)
@@ -1280,19 +1280,6 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	// 去除档案名称的前后空格，避免路径问题
 	fileName = strings.TrimSpace(fileName)
 
-	// 获取上传文件
-	file, header, err := r.FormFile("upload_file")
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		response := map[string]interface{}{
-			"success": false,
-			"message": "获取上传文件失败: " + err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
-		return
-	}
-	defer file.Close()
-
 	// 获取任务配置中的上传路径
 	uploadPath := getUploadPath()
 	if uploadPath == "" {
@@ -1319,42 +1306,144 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 保存文件
-	targetFile := filepath.Join(targetDir, header.Filename)
-	dst, err := os.Create(targetFile)
-	if err != nil {
-		logger.Errorf("设备审核进度-创建文件失败: %v, 路径: %s", err, targetFile)
-		w.WriteHeader(http.StatusInternalServerError)
-		response := map[string]interface{}{
-			"success": false,
-			"message": "保存文件失败: " + err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
-		return
-	}
-	defer dst.Close()
+	// 限制常量
+	const maxTotalSize = 200 * 1024 * 1024 // 200MB
+	const maxFileCount = 20
 
-	_, err = io.Copy(dst, file)
+	// 解析multipart表单
+	err = r.ParseMultipartForm(32 << 20) // 32MB内存缓冲区
 	if err != nil {
-		logger.Errorf("设备审核进度-写入文件失败: %v, 路径: %s", err, targetFile)
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		response := map[string]interface{}{
 			"success": false,
-			"message": "写入文件失败: " + err.Error(),
+			"message": "解析表单失败: " + err.Error(),
 		}
 		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	// 记录操作日志
-	action := fmt.Sprintf("上传文件（档案：%s，文件名：%s，是否单兵设备：%d）", fileName, header.Filename, isSingleSoldier)
+	// 获取所有上传的文件
+	files := r.MultipartForm.File["upload_file"]
+	if len(files) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		response := map[string]interface{}{
+			"success": false,
+			"message": "请选择要上传的文件",
+		}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// 检查文件数量限制
+	if len(files) > maxFileCount {
+		w.WriteHeader(http.StatusBadRequest)
+		response := map[string]interface{}{
+			"success": false,
+			"message": fmt.Sprintf("文件数量超过限制，最多允许上传 %d 个文件，当前选择了 %d 个", maxFileCount, len(files)),
+		}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// 检查总大小限制
+	var totalSize int64
+	for _, fileHeader := range files {
+		totalSize += fileHeader.Size
+	}
+	if totalSize > maxTotalSize {
+		w.WriteHeader(http.StatusBadRequest)
+		response := map[string]interface{}{
+			"success": false,
+			"message": fmt.Sprintf("总文件大小超过限制，最大允许 %d MB，当前总大小为 %.2f MB", maxTotalSize/(1024*1024), float64(totalSize)/(1024*1024)),
+		}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// 处理每个文件
+	var uploadedFiles []string
+	var failedFiles []string
+	totalFiles := len(files)
+
+	for _, fileHeader := range files {
+		// 打开文件
+		file, err := fileHeader.Open()
+		if err != nil {
+			logger.Errorf("设备审核进度-打开文件失败: %v, 文件名: %s", err, fileHeader.Filename)
+			failedFiles = append(failedFiles, fileHeader.Filename)
+			continue
+		}
+
+		// 处理文件路径（支持目录结构，保留相对路径）
+		// 浏览器上传目录时，文件名可能包含相对路径，如 "subdir/file.txt"
+		filePath := fileHeader.Filename
+		// 清理路径，防止路径遍历攻击
+		filePath = filepath.Clean(filePath)
+		if strings.HasPrefix(filePath, "..") || strings.HasPrefix(filePath, "/") {
+			logger.Errorf("设备审核进度-非法文件路径: %s", filePath)
+			file.Close()
+			failedFiles = append(failedFiles, fileHeader.Filename)
+			continue
+		}
+
+		// 构建目标文件路径
+		targetFile := filepath.Join(targetDir, filePath)
+		
+		// 确保目标目录存在（如果文件在子目录中）
+		targetFileDir := filepath.Dir(targetFile)
+		err = createDirIfNotExists(targetFileDir)
+		if err != nil {
+			logger.Errorf("设备审核进度-创建子目录失败: %v, 路径: %s", err, targetFileDir)
+			file.Close()
+			failedFiles = append(failedFiles, fileHeader.Filename)
+			continue
+		}
+
+		// 创建目标文件
+		dst, err := os.Create(targetFile)
+		if err != nil {
+			logger.Errorf("设备审核进度-创建文件失败: %v, 路径: %s", err, targetFile)
+			file.Close()
+			failedFiles = append(failedFiles, fileHeader.Filename)
+			continue
+		}
+
+		// 复制文件内容
+		_, err = io.Copy(dst, file)
+		dst.Close()
+		file.Close()
+
+		if err != nil {
+			logger.Errorf("设备审核进度-写入文件失败: %v, 路径: %s", err, targetFile)
+			failedFiles = append(failedFiles, fileHeader.Filename)
+			continue
+		}
+
+		uploadedFiles = append(uploadedFiles, fileHeader.Filename)
+	}
+
+	// 构建操作日志
+	var action string
+	if len(uploadedFiles) == 1 {
+		action = fmt.Sprintf("上传文件（档案：%s，文件名：%s，是否单兵设备：%d）", fileName, uploadedFiles[0], isSingleSoldier)
+	} else {
+		action = fmt.Sprintf("上传目录/文件（档案：%s，成功：%d/%d，是否单兵设备：%d）", fileName, len(uploadedFiles), totalFiles, isSingleSoldier)
+		if len(failedFiles) > 0 {
+			action += fmt.Sprintf("，失败：%d", len(failedFiles))
+		}
+	}
 	operationlog.Record(r, currentUser.Username, action)
 
-	// 返回成功响应
+	// 返回响应
 	w.WriteHeader(http.StatusOK)
 	response := map[string]interface{}{
-		"success": true,
-		"message": "文件上传成功",
+		"success":       true,
+		"message":        fmt.Sprintf("上传完成！成功：%d/%d", len(uploadedFiles), totalFiles),
+		"total":          totalFiles,
+		"successCount":  len(uploadedFiles),
+		"failedCount":    len(failedFiles),
+		"uploadedFiles":  uploadedFiles,
+		"failedFiles":    failedFiles,
 	}
 	json.NewEncoder(w).Encode(response)
 }

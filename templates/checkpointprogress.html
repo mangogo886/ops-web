@@ -722,12 +722,38 @@ function confirmDelete(taskId, fileName) {
                     <div id="uploadFileName" style="color: #666; margin-bottom: 10px;"></div>
                 </div>
                 <div class="upload-form-group">
-                    <label for="uploadFileInput">选择文件：</label>
-                    <input type="file" id="uploadFileInput" name="upload_file" required>
+                    <label>上传类型：</label>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: inline-flex; align-items: center; margin-right: 20px; cursor: pointer;">
+                            <input type="radio" name="uploadType" value="file" id="uploadTypeFile" checked onchange="switchUploadType()" style="margin-right: 5px;">
+                            <span>上传文件</span>
+                        </label>
+                        <label style="display: inline-flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="uploadType" value="directory" id="uploadTypeDirectory" onchange="switchUploadType()" style="margin-right: 5px;">
+                            <span>上传目录</span>
+                        </label>
+                    </div>
+                    <label for="uploadFileInput" id="uploadFileLabel">选择文件：</label>
+                    <input type="file" id="uploadFileInput" name="upload_file" multiple required>
+                    <div style="font-size: 12px; color: #666; margin-top: 5px;" id="uploadTypeHint">
+                        支持选择单个或多个文件（最多20个文件，总大小不超过200MB）
+                    </div>
+                </div>
+                <div id="uploadFileInfo" style="margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 4px; display: none;">
+                    <div style="font-size: 13px; color: #333; margin-bottom: 5px;"><strong>已选择：</strong></div>
+                    <div id="fileList" style="font-size: 12px; color: #666; max-height: 100px; overflow-y: auto;"></div>
+                    <div id="fileSizeInfo" style="font-size: 12px; color: #666; margin-top: 5px;"></div>
+                </div>
+                <div id="uploadProgress" style="display: none; margin: 10px 0;">
+                    <div style="font-size: 13px; color: #333; margin-bottom: 5px;"><strong>上传进度：</strong></div>
+                    <div style="background: #e0e0e0; border-radius: 4px; height: 20px; position: relative; overflow: hidden;">
+                        <div id="progressBar" style="background: #3498db; height: 100%; width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px;"></div>
+                    </div>
+                    <div id="progressText" style="font-size: 12px; color: #666; margin-top: 5px; text-align: center;"></div>
                 </div>
                 <div class="upload-form-actions">
                     <button type="button" class="upload-btn upload-btn-cancel" onclick="closeUploadModal()">取消</button>
-                    <button type="submit" class="upload-btn">上传</button>
+                    <button type="submit" class="upload-btn" id="uploadSubmitBtn">上传</button>
                 </div>
             </form>
         </div>
@@ -736,12 +762,97 @@ function confirmDelete(taskId, fileName) {
     </div>
 
     <script>
+    // 切换上传类型
+    function switchUploadType() {
+        var fileInput = document.getElementById('uploadFileInput');
+        var fileLabel = document.getElementById('uploadFileLabel');
+        var typeHint = document.getElementById('uploadTypeHint');
+        var uploadTypeFile = document.getElementById('uploadTypeFile');
+        
+        // 清空当前选择
+        fileInput.value = '';
+        document.getElementById('uploadFileInfo').style.display = 'none';
+        
+        if (uploadTypeFile.checked) {
+            // 文件模式：移除 webkitdirectory，保留 multiple
+            fileInput.removeAttribute('webkitdirectory');
+            fileInput.setAttribute('multiple', 'multiple');
+            fileLabel.textContent = '选择文件：';
+            typeHint.textContent = '支持选择单个或多个文件（最多20个文件，总大小不超过200MB）';
+        } else {
+            // 目录模式：添加 webkitdirectory
+            fileInput.setAttribute('webkitdirectory', 'webkitdirectory');
+            fileInput.setAttribute('multiple', 'multiple');
+            fileLabel.textContent = '选择目录：';
+            typeHint.textContent = '支持选择整个目录上传（最多20个文件，总大小不超过200MB）';
+        }
+    }
+
     // 打开上传模态框
     function openUploadModal(taskId, fileName) {
         document.getElementById('uploadTaskId').value = taskId;
         document.getElementById('uploadFileName').textContent = fileName;
         document.getElementById('uploadModal').style.display = 'block';
         document.getElementById('uploadFileInput').value = '';
+        document.getElementById('uploadFileInfo').style.display = 'none';
+        document.getElementById('uploadProgress').style.display = 'none';
+        document.getElementById('fileList').innerHTML = '';
+        document.getElementById('fileSizeInfo').textContent = '';
+        // 重置为文件模式
+        document.getElementById('uploadTypeFile').checked = true;
+        switchUploadType();
+    }
+
+    // 文件选择变化时显示文件信息
+    document.getElementById('uploadFileInput').addEventListener('change', function(e) {
+        var files = e.target.files;
+        var fileInfoDiv = document.getElementById('uploadFileInfo');
+        var fileListDiv = document.getElementById('fileList');
+        var fileSizeInfoDiv = document.getElementById('fileSizeInfo');
+        
+        if (files.length === 0) {
+            fileInfoDiv.style.display = 'none';
+            return;
+        }
+
+        // 检查文件数量限制
+        if (files.length > 20) {
+            alert('文件数量超过限制，最多允许上传20个文件，当前选择了' + files.length + '个');
+            e.target.value = '';
+            fileInfoDiv.style.display = 'none';
+            return;
+        }
+
+        // 计算总大小
+        var totalSize = 0;
+        var fileList = [];
+        for (var i = 0; i < files.length; i++) {
+            totalSize += files[i].size;
+            fileList.push(files[i].name + ' (' + formatFileSize(files[i].size) + ')');
+        }
+
+        // 检查总大小限制（200MB）
+        var maxSize = 200 * 1024 * 1024; // 200MB
+        if (totalSize > maxSize) {
+            alert('总文件大小超过限制，最大允许200MB，当前总大小为' + formatFileSize(totalSize));
+            e.target.value = '';
+            fileInfoDiv.style.display = 'none';
+            return;
+        }
+
+        // 显示文件信息
+        fileListDiv.innerHTML = fileList.join('<br>');
+        fileSizeInfoDiv.textContent = '共 ' + files.length + ' 个文件，总大小：' + formatFileSize(totalSize);
+        fileInfoDiv.style.display = 'block';
+    });
+
+    // 格式化文件大小
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        var k = 1024;
+        var sizes = ['B', 'KB', 'MB', 'GB'];
+        var i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
     }
 
     // 关闭上传模态框
@@ -763,36 +874,107 @@ function confirmDelete(taskId, fileName) {
         e.preventDefault();
         
         var formData = new FormData(this);
-        var uploadBtn = this.querySelector('button[type="submit"]');
+        var uploadBtn = document.getElementById('uploadSubmitBtn');
         var originalText = uploadBtn.textContent;
+        var progressDiv = document.getElementById('uploadProgress');
+        var progressBar = document.getElementById('progressBar');
+        var progressText = document.getElementById('progressText');
+        
+        // 获取文件数量
+        var files = document.getElementById('uploadFileInput').files;
+        var totalFiles = files.length;
         
         // 禁用按钮并显示上传中
         uploadBtn.disabled = true;
         uploadBtn.textContent = '上传中...';
         
-        fetch('/checkpoint/progress/upload', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('文件上传成功！');
-                closeUploadModal();
-                // 刷新页面
-                window.location.reload();
+        // 显示进度条
+        progressDiv.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        progressText.textContent = '准备上传...';
+        
+        // 使用XMLHttpRequest以便显示上传进度
+        var xhr = new XMLHttpRequest();
+        
+        // 上传进度事件
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                var percentComplete = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percentComplete + '%';
+                progressBar.textContent = percentComplete + '%';
+                progressText.textContent = '上传中：' + percentComplete + '% (' + formatFileSize(e.loaded) + ' / ' + formatFileSize(e.total) + ')';
+            }
+        });
+        
+        // 请求完成事件
+        xhr.addEventListener('load', function() {
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        progressBar.style.width = '100%';
+                        progressBar.textContent = '100%';
+                        progressText.textContent = '上传完成！成功：' + (data.successCount || totalFiles) + '/' + (data.total || totalFiles);
+                        
+                        var message = '上传完成！\n成功：' + (data.successCount || totalFiles) + '/' + (data.total || totalFiles);
+                        if (data.failedCount && data.failedCount > 0) {
+                            message += '\n失败：' + data.failedCount;
+                            if (data.failedFiles && data.failedFiles.length > 0) {
+                                message += '\n失败文件：' + data.failedFiles.join(', ');
+                            }
+                        }
+                        
+                        setTimeout(function() {
+                            alert(message);
+                            closeUploadModal();
+                            // 刷新页面
+                            window.location.reload();
+                        }, 500);
+                    } else {
+                        progressText.textContent = '上传失败：' + (data.message || '未知错误');
+                        alert('上传失败：' + (data.message || '未知错误'));
+                        uploadBtn.disabled = false;
+                        uploadBtn.textContent = originalText;
+                    }
+                } catch (e) {
+                    progressText.textContent = '解析响应失败';
+                    alert('上传失败：解析响应失败');
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = originalText;
+                }
             } else {
-                alert('上传失败：' + (data.message || '未知错误'));
+                try {
+                    var errorData = JSON.parse(xhr.responseText);
+                    progressText.textContent = '上传失败：' + (errorData.message || '未知错误');
+                    alert('上传失败：' + (errorData.message || '未知错误'));
+                } catch (e) {
+                    progressText.textContent = '上传失败，状态码：' + xhr.status;
+                    alert('上传失败，状态码：' + xhr.status);
+                }
                 uploadBtn.disabled = false;
                 uploadBtn.textContent = originalText;
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('上传失败：' + error.message);
+        });
+        
+        // 请求错误事件
+        xhr.addEventListener('error', function() {
+            progressText.textContent = '网络错误';
+            alert('上传失败：网络错误');
             uploadBtn.disabled = false;
             uploadBtn.textContent = originalText;
         });
+        
+        // 请求中止事件
+        xhr.addEventListener('abort', function() {
+            progressText.textContent = '上传已取消';
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = originalText;
+        });
+        
+        // 发送请求
+        xhr.open('POST', '/checkpoint/progress/upload');
+        xhr.send(formData);
     });
 
     // 下载附件

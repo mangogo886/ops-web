@@ -2,6 +2,7 @@ package checkpointprogress
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -585,6 +586,21 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// 保存审核意见历史记录（如果内容有变化）
+		currentUser := auth.GetCurrentUser(r)
+		err = SaveAuditHistory(tx, taskID, auditComment, auditStatus, currentUser)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				tx.Rollback()
+				http.Error(w, "档案不存在", http.StatusBadRequest)
+				return
+			}
+			tx.Rollback()
+			logger.Errorf("保存卡口审核意见历史失败: %v, taskID: %d", err, taskID)
+			http.Error(w, "保存审核意见历史失败: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		// 更新审核意见和状态
 		updateSQL := `UPDATE checkpoint_tasks SET audit_comment = ?, audit_status = ?, updated_at = NOW() WHERE id = ?`
 		var comment interface{}
@@ -630,7 +646,7 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 记录操作日志
-		if currentUser := auth.GetCurrentUser(r); currentUser != nil {
+		if currentUser != nil {
 			action := fmt.Sprintf("编辑卡口审核意见（档案ID：%d，状态：%s）", taskID, auditStatus)
 			operationlog.Record(r, currentUser.Username, action)
 		}
@@ -640,6 +656,78 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Error(w, "不支持的请求方法", http.StatusMethodNotAllowed)
+}
+
+// AuditHistoryHandler: 查看审核意见历史记录（返回JSON格式，用于弹窗显示）
+func AuditHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	taskIDStr := r.URL.Query().Get("task_id")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"success": false, "message": "无效的任务ID"}`))
+		return
+	}
+
+	// 验证任务是否存在
+	var exists int
+	err = db.DBInstance.QueryRow("SELECT COUNT(*) FROM checkpoint_tasks WHERE id = ?", taskID).Scan(&exists)
+	if err != nil || exists == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"success": false, "message": "档案不存在"}`))
+		return
+	}
+
+	// 查询历史记录
+	historyList, err := GetAuditHistory(taskID)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"success": false, "message": "查询审核意见历史失败"}`))
+		return
+	}
+
+	// 转换为JSON格式（处理sql.NullString）
+	type HistoryItemJSON struct {
+		ID           int    `json:"id"`
+		AuditComment string `json:"audit_comment"`
+		AuditStatus  string `json:"audit_status"`
+		Auditor      string `json:"auditor"`
+		AuditTime    string `json:"audit_time"`
+	}
+
+	var historyJSON []HistoryItemJSON
+	for _, item := range historyList {
+		comment := ""
+		if item.AuditComment.Valid {
+			comment = item.AuditComment.String
+		}
+		historyJSON = append(historyJSON, HistoryItemJSON{
+			ID:           item.ID,
+			AuditComment: comment,
+			AuditStatus:  item.AuditStatus,
+			Auditor:      item.Auditor,
+			AuditTime:    item.AuditTime,
+		})
+	}
+
+	// 返回JSON
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	response := map[string]interface{}{
+		"success": true,
+		"data":    historyJSON,
+	}
+	
+	jsonData, err := json.Marshal(response)
+	if err != nil {
+		logger.Errorf("JSON序列化失败: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"success": false, "message": "数据序列化失败"}`))
+		return
+	}
+
+	w.Write(jsonData)
 }
 
 // 辅助函数：获取行值（安全地获取，防止索引越界）
@@ -1109,7 +1197,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
-// UploadHandler 处理文件上传
+// UploadHandler 处理文件上传（支持单个文件和目录上传）
 func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "方法不允许", http.StatusMethodNotAllowed)
@@ -1123,11 +1211,19 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 设置响应头为JSON格式
+	w.Header().Set("Content-Type", "application/json")
+
 	// 获取task_id和档案名称
 	taskIDStr := r.FormValue("task_id")
 	taskID, err := strconv.Atoi(taskIDStr)
 	if err != nil {
-		http.Error(w, "无效的任务ID", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		response := map[string]interface{}{
+			"success": false,
+			"message": "无效的任务ID",
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 
@@ -1137,63 +1233,193 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.DBInstance.QueryRow(query, taskID).Scan(&fileName)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "档案不存在", http.StatusNotFound)
+			w.WriteHeader(http.StatusNotFound)
+			response := map[string]interface{}{
+				"success": false,
+				"message": "档案不存在",
+			}
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 		logger.Errorf("卡口审核进度-查询档案名称失败: %v", err)
-		http.Error(w, "查询档案失败", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		response := map[string]interface{}{
+			"success": false,
+			"message": "查询档案失败",
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	// 获取上传文件
-	file, header, err := r.FormFile("upload_file")
-	if err != nil {
-		http.Error(w, "获取上传文件失败: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	defer file.Close()
+	// 去除档案名称的前后空格，避免路径问题
+	fileName = strings.TrimSpace(fileName)
 
 	// 获取任务配置中的上传路径
 	uploadPath := getUploadPath()
 	if uploadPath == "" {
-		http.Error(w, "未配置上传路径，请先在任务配置中设置", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		response := map[string]interface{}{
+			"success": false,
+			"message": "未配置上传路径，请先在任务配置中设置",
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	// 创建以档案名称命名的目录
+	// 创建以档案名称命名的目录（去除前后空格）
 	targetDir := filepath.Join(uploadPath, fileName)
 	err = createDirIfNotExists(targetDir)
 	if err != nil {
 		logger.Errorf("卡口审核进度-创建目录失败: %v, 路径: %s", err, targetDir)
-		http.Error(w, "创建目录失败: "+err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		response := map[string]interface{}{
+			"success": false,
+			"message": "创建目录失败: " + err.Error(),
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	// 保存文件
-	targetFile := filepath.Join(targetDir, header.Filename)
-	dst, err := os.Create(targetFile)
+	// 限制常量
+	const maxTotalSize = 200 * 1024 * 1024 // 200MB
+	const maxFileCount = 20
+
+	// 解析multipart表单
+	err = r.ParseMultipartForm(32 << 20) // 32MB内存缓冲区
 	if err != nil {
-		logger.Errorf("卡口审核进度-创建文件失败: %v, 路径: %s", err, targetFile)
-		http.Error(w, "保存文件失败: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer dst.Close()
-
-	_, err = io.Copy(dst, file)
-	if err != nil {
-		logger.Errorf("卡口审核进度-写入文件失败: %v, 路径: %s", err, targetFile)
-		http.Error(w, "写入文件失败: "+err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
+		response := map[string]interface{}{
+			"success": false,
+			"message": "解析表单失败: " + err.Error(),
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	// 记录操作日志
-	action := fmt.Sprintf("上传文件（档案：%s，文件名：%s）", fileName, header.Filename)
+	// 获取所有上传的文件
+	files := r.MultipartForm.File["upload_file"]
+	if len(files) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		response := map[string]interface{}{
+			"success": false,
+			"message": "请选择要上传的文件",
+		}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// 检查文件数量限制
+	if len(files) > maxFileCount {
+		w.WriteHeader(http.StatusBadRequest)
+		response := map[string]interface{}{
+			"success": false,
+			"message": fmt.Sprintf("文件数量超过限制，最多允许上传 %d 个文件，当前选择了 %d 个", maxFileCount, len(files)),
+		}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// 检查总大小限制
+	var totalSize int64
+	for _, fileHeader := range files {
+		totalSize += fileHeader.Size
+	}
+	if totalSize > maxTotalSize {
+		w.WriteHeader(http.StatusBadRequest)
+		response := map[string]interface{}{
+			"success": false,
+			"message": fmt.Sprintf("总文件大小超过限制，最大允许 %d MB，当前总大小为 %.2f MB", maxTotalSize/(1024*1024), float64(totalSize)/(1024*1024)),
+		}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// 处理每个文件
+	var uploadedFiles []string
+	var failedFiles []string
+	totalFiles := len(files)
+
+	for _, fileHeader := range files {
+		// 打开文件
+		file, err := fileHeader.Open()
+		if err != nil {
+			logger.Errorf("卡口审核进度-打开文件失败: %v, 文件名: %s", err, fileHeader.Filename)
+			failedFiles = append(failedFiles, fileHeader.Filename)
+			continue
+		}
+
+		// 处理文件路径（支持目录结构，保留相对路径）
+		// 浏览器上传目录时，文件名可能包含相对路径，如 "subdir/file.txt"
+		filePath := fileHeader.Filename
+		// 清理路径，防止路径遍历攻击
+		filePath = filepath.Clean(filePath)
+		if strings.HasPrefix(filePath, "..") || strings.HasPrefix(filePath, "/") {
+			logger.Errorf("卡口审核进度-非法文件路径: %s", filePath)
+			file.Close()
+			failedFiles = append(failedFiles, fileHeader.Filename)
+			continue
+		}
+
+		// 构建目标文件路径
+		targetFile := filepath.Join(targetDir, filePath)
+		
+		// 确保目标目录存在（如果文件在子目录中）
+		targetFileDir := filepath.Dir(targetFile)
+		err = createDirIfNotExists(targetFileDir)
+		if err != nil {
+			logger.Errorf("卡口审核进度-创建子目录失败: %v, 路径: %s", err, targetFileDir)
+			file.Close()
+			failedFiles = append(failedFiles, fileHeader.Filename)
+			continue
+		}
+
+		// 创建目标文件
+		dst, err := os.Create(targetFile)
+		if err != nil {
+			logger.Errorf("卡口审核进度-创建文件失败: %v, 路径: %s", err, targetFile)
+			file.Close()
+			failedFiles = append(failedFiles, fileHeader.Filename)
+			continue
+		}
+
+		// 复制文件内容
+		_, err = io.Copy(dst, file)
+		dst.Close()
+		file.Close()
+
+		if err != nil {
+			logger.Errorf("卡口审核进度-写入文件失败: %v, 路径: %s", err, targetFile)
+			failedFiles = append(failedFiles, fileHeader.Filename)
+			continue
+		}
+
+		uploadedFiles = append(uploadedFiles, fileHeader.Filename)
+	}
+
+	// 构建操作日志
+	var action string
+	if len(uploadedFiles) == 1 {
+		action = fmt.Sprintf("上传文件（档案：%s，文件名：%s）", fileName, uploadedFiles[0])
+	} else {
+		action = fmt.Sprintf("上传目录/文件（档案：%s，成功：%d/%d）", fileName, len(uploadedFiles), totalFiles)
+		if len(failedFiles) > 0 {
+			action += fmt.Sprintf("，失败：%d", len(failedFiles))
+		}
+	}
 	operationlog.Record(r, currentUser.Username, action)
 
-	// 返回成功响应
-	w.Header().Set("Content-Type", "application/json")
+	// 返回响应
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"success": true, "message": "文件上传成功"}`))
+	response := map[string]interface{}{
+		"success":       true,
+		"message":       fmt.Sprintf("上传完成！成功：%d/%d", len(uploadedFiles), totalFiles),
+		"total":         totalFiles,
+		"successCount":  len(uploadedFiles),
+		"failedCount":   len(failedFiles),
+		"uploadedFiles": uploadedFiles,
+		"failedFiles":   failedFiles,
+	}
+	json.NewEncoder(w).Encode(response)
 }
 
 // getUploadPath 获取上传路径配置

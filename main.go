@@ -113,6 +113,7 @@ func main() {
     http.HandleFunc("/checkpoint/progress/detail", auth.RequireAuth(checkpointprogress.DetailHandler))
     http.HandleFunc("/checkpoint/progress/detail/export", auth.RequireAuth(checkpointprogress.DetailExportHandler))
     http.HandleFunc("/checkpoint/progress/edit", auth.RequireAuth(checkpointprogress.EditCommentHandler))
+    http.HandleFunc("/checkpoint/progress/history", auth.RequireAuth(checkpointprogress.AuditHistoryHandler))
     http.HandleFunc("/checkpoint/progress/delete", auth.RequireAuth(checkpointprogress.DeleteHandler))
     http.HandleFunc("/checkpoint/progress/download-template", auth.RequireAuth(checkpointprogress.DownloadTemplateHandler))
     http.HandleFunc("/checkpoint/progress/upload", auth.RequireAuth(checkpointprogress.UploadHandler))
