@@ -1,0 +1,127 @@
+============================================
+设备审核进度抽检功能 SQL 变更说明
+============================================
+
+变更日期：2025-12-19
+功能说明：为设备审核进度添加抽检功能，支持对审核状态为"已完成"的任务进行抽检
+
+============================================
+执行顺序
+============================================
+
+1. 先执行：alter-audit-tasks-add-sample-fields.sql
+   - 为 audit_tasks 表添加抽检相关字段
+   - 添加字段：is_sampled（是否已抽检）、last_sampled_at（最后抽检时间）
+   - 添加索引：idx_is_sampled（提高查询性能）
+
+2. 再执行：create-audit-sample-records-table.sql
+   - 创建 audit_sample_records 表
+   - 用于保存详细的抽检历史记录
+   - 支持多次抽检
+
+============================================
+字段说明
+============================================
+
+【audit_tasks 表新增字段】
+- is_sampled: TINYINT(1) NOT NULL DEFAULT 0
+  - 是否已抽检：0-未抽检，1-已抽检
+  - 用于快速查询和列表页显示
+
+- last_sampled_at: TIMESTAMP NULL DEFAULT NULL
+  - 最后抽检时间
+  - 用于显示最近一次抽检的时间
+
+【audit_sample_records 表字段】
+- id: BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT
+  - 自增ID，主键
+
+- task_id: BIGINT(20) UNSIGNED NOT NULL
+  - 审核任务ID，外键关联 audit_tasks.id
+  - 支持级联删除
+
+- sampled_by: VARCHAR(50) NOT NULL
+  - 抽检人员
+
+- sampled_at: TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  - 抽检时间
+
+- sample_comment: TEXT DEFAULT NULL
+  - 抽检意见
+
+- sample_result: VARCHAR(20) DEFAULT NULL
+  - 抽检结果：通过、不通过、待整改
+
+- created_at: TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  - 创建时间
+
+============================================
+索引说明
+============================================
+
+【audit_tasks 表新增索引】
+- idx_is_sampled: 用于快速筛选已抽检/未抽检的任务
+
+【audit_sample_records 表索引】
+- idx_task_id: 用于快速查询某个任务的所有抽检记录
+- idx_sampled_at: 用于按时间排序和筛选
+- idx_sampled_by: 用于查询某个抽检人员的所有记录
+- idx_sample_result: 用于按抽检结果筛选
+
+============================================
+功能设计
+============================================
+
+1. 抽检条件
+   - 仅当 audit_status = '已完成' 时，才允许进行抽检操作
+
+2. 抽检流程
+   - 抽检人员选择已完成的任务
+   - 填写抽检意见和抽检结果
+   - 系统自动记录抽检人员、时间等信息
+   - 同时更新 audit_tasks 表的 is_sampled 和 last_sampled_at 字段
+   - 在 audit_sample_records 表中插入新的抽检记录
+
+3. 列表页显示
+   - 显示抽检状态列
+   - 已完成 + 未抽检：显示"待抽检"（橙色标签）
+   - 已完成 + 已抽检：显示"已抽检"（绿色标签，显示抽检人/时间）
+   - 未完成：不显示抽检相关操作
+
+4. 筛选功能
+   - 增加"抽检状态"筛选：全部/已抽检/未抽检
+   - 可组合筛选：审核状态=已完成 + 抽检状态=未抽检
+
+5. 抽检历史
+   - 支持查看某个任务的所有抽检历史记录
+   - 支持多次抽检
+
+============================================
+注意事项
+============================================
+
+1. 执行前请备份数据库
+2. 确保 audit_tasks 表已存在
+3. SQL 文件已包含存在性检查，可重复执行
+4. 外键约束确保数据一致性
+5. 删除任务时会自动删除关联的抽检记录（级联删除）
+
+============================================
+回滚方案（如需要）
+============================================
+
+如果需要回滚，执行以下 SQL：
+
+-- 删除抽检记录表
+DROP TABLE IF EXISTS `audit_sample_records`;
+
+-- 删除 audit_tasks 表的抽检字段
+ALTER TABLE `audit_tasks` 
+DROP INDEX IF EXISTS `idx_is_sampled`,
+DROP COLUMN IF EXISTS `last_sampled_at`,
+DROP COLUMN IF EXISTS `is_sampled`;
+
+注意：删除字段前请确保没有数据依赖，或先备份数据。
+
+============================================
+

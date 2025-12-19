@@ -34,6 +34,11 @@ type AuditTask struct {
 	Attachments []string // 附件列表
 	IsSingleSoldier int // 是否单兵设备：0=否，1=是
 	ArchiveType sql.NullString // 档案类型：新增、取推、补档案
+	// 抽检相关字段
+	IsSampled   bool   // 是否已抽检
+	LastSampledAt string // 最后抽检时间
+	SampledBy   string // 最后抽检人员
+	SampleCount int    // 抽检次数
 }
 
 // 页面数据结构体
@@ -45,6 +50,7 @@ type PageData struct {
 	SearchName    string
 	AuditStatus   string // 审核状态查询条件
 	ArchiveType   string // 建档类型查询条件
+	SampleStatus  string // 抽检状态查询条件：全部、已抽检、未抽检
 	CurrentPage   int
 	TotalPages    int
 	TotalCount    int    // 总记录数
@@ -67,6 +73,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	searchName := r.URL.Query().Get("file_name")
 	auditStatus := r.URL.Query().Get("audit_status") // 审核状态: 未审核, 已审核待整改, 已完成 或空
 	archiveType := r.URL.Query().Get("archive_type") // 建档类型: 新增, 取推, 补档案 或空
+	sampleStatus := r.URL.Query().Get("sample_status") // 抽检状态: 全部, 已抽检, 未抽检 或空
 	pageStr := r.URL.Query().Get("page")
 	importMsg := r.URL.Query().Get("message")
 	importCountStr := r.URL.Query().Get("count")
@@ -117,6 +124,21 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 抽检状态查询
+	if sampleStatus != "" {
+		validSampleStatuses := map[string]bool{
+			"已抽检": true,
+			"未抽检": true,
+		}
+		if validSampleStatuses[sampleStatus] {
+			if sampleStatus == "已抽检" {
+				whereSQL += " AND is_sampled = 1"
+			} else if sampleStatus == "未抽检" {
+				whereSQL += " AND (is_sampled = 0 OR is_sampled IS NULL)"
+			}
+		}
+	}
+
 	// 1. 查询总记录数
 	var totalCount int
 	countSQL := "SELECT COUNT(*) FROM audit_tasks" + whereSQL
@@ -136,8 +158,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		page = totalPages
 	}
 
-	// 3. 查询列表数据
-	querySQL := fmt.Sprintf("SELECT id, file_name, organization, import_time, audit_status, record_count, audit_comment, updated_at, is_single_soldier, archive_type FROM audit_tasks %s ORDER BY id DESC LIMIT ? OFFSET ?", whereSQL)
+	// 3. 查询列表数据（包含抽检字段）
+	querySQL := fmt.Sprintf("SELECT id, file_name, organization, import_time, audit_status, record_count, audit_comment, updated_at, is_single_soldier, archive_type, is_sampled, last_sampled_at FROM audit_tasks %s ORDER BY id DESC LIMIT ? OFFSET ?", whereSQL)
 
 	// 准备完整的参数列表
 	queryArgs := append(args, pageSize, offset)
@@ -151,9 +173,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	var taskList []AuditTask
+	var taskIDs []int
 	for rows.Next() {
 		var task AuditTask
-		var importTimeRaw, updatedAtRaw sql.NullString
+		var importTimeRaw, updatedAtRaw, lastSampledAtRaw sql.NullString
+		var isSampled int
 		err = rows.Scan(
 			&task.ID,
 			&task.FileName,
@@ -165,6 +189,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			&updatedAtRaw,
 			&task.IsSingleSoldier,
 			&task.ArchiveType,
+			&isSampled,
+			&lastSampledAtRaw,
 		)
 
 		if err != nil {
@@ -175,7 +201,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// 格式化时间字段为 YYYY-MM-DD HH:mm
 		task.ImportTime = formatDateTime(importTimeRaw.String)
 		task.UpdatedAt = formatDateTime(updatedAtRaw.String)
+		task.IsSampled = isSampled == 1
+		if lastSampledAtRaw.Valid {
+			task.LastSampledAt = formatDateTime(lastSampledAtRaw.String)
+		}
 
+		taskIDs = append(taskIDs, task.ID)
 		taskList = append(taskList, task)
 	}
 
@@ -184,6 +215,24 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("审核进度-数据遍历失败: %v", err)
 		http.Error(w, "数据遍历失败: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// 批量获取抽检信息
+	sampleInfoMap, err := BatchGetSampleInfo(taskIDs)
+	if err != nil {
+		logger.Errorf("批量获取抽检信息失败: %v", err)
+		// 不阻断流程，继续执行
+		sampleInfoMap = make(map[int]*SampleInfo)
+	}
+
+	// 填充抽检信息到任务列表
+	for i := range taskList {
+		if info, ok := sampleInfoMap[taskList[i].ID]; ok {
+			taskList[i].IsSampled = info.IsSampled
+			taskList[i].LastSampledAt = info.LastSampledAt
+			taskList[i].SampledBy = info.SampledBy
+			taskList[i].SampleCount = info.SampleCount
+		}
 	}
 
 	// 为每个任务查询附件列表
@@ -208,6 +257,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	if archiveType != "" {
 		queryParams = append(queryParams, "archive_type="+archiveType)
+	}
+	if sampleStatus != "" {
+		queryParams = append(queryParams, "sample_status="+sampleStatus)
 	}
 	query := strings.Join(queryParams, "&")
 
@@ -262,6 +314,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		SearchName:    searchName,
 		AuditStatus:   auditStatus,
 		ArchiveType:   archiveType,
+		SampleStatus:  sampleStatus,
 		CurrentPage:   page,
 		TotalPages:    totalPages,
 		TotalCount:    totalCount,
@@ -1602,6 +1655,231 @@ func formatDateTime(timeStr string) string {
 	}
 	
 	return timeStr
+}
+
+// SampleHandler: 抽检操作（POST提交抽检，GET显示抽检表单）
+func SampleHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		// 显示抽检表单页面
+		taskIDStr := r.URL.Query().Get("task_id")
+		taskID, err := strconv.Atoi(taskIDStr)
+		if err != nil || taskID <= 0 {
+			http.Error(w, "无效的任务ID", http.StatusBadRequest)
+			return
+		}
+
+		// 查询任务信息
+		var task AuditTask
+		taskSQL := "SELECT id, file_name, organization, audit_status FROM audit_tasks WHERE id = ?"
+		err = db.DBInstance.QueryRow(taskSQL, taskID).Scan(
+			&task.ID,
+			&task.FileName,
+			&task.Organization,
+			&task.AuditStatus,
+		)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "档案不存在", http.StatusNotFound)
+			} else {
+				http.Error(w, "查询档案失败: "+err.Error(), http.StatusInternalServerError)
+			}
+			return
+		}
+
+		// 验证审核状态必须是"已完成"
+		if task.AuditStatus != "已完成" {
+			http.Error(w, "只有审核状态为'已完成'的任务才能进行抽检", http.StatusBadRequest)
+			return
+		}
+
+		// 获取当前用户
+		currentUser := auth.GetCurrentUser(r)
+		if currentUser == nil {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+
+		type SamplePageData struct {
+			Title      string
+			ActiveMenu string
+			SubMenu    string
+			Task       AuditTask
+			SampledBy  string
+		}
+
+		data := SamplePageData{
+			Title:      "抽检",
+			ActiveMenu: "audit",
+			SubMenu:    "audit_progress",
+			Task:       task,
+			SampledBy:  currentUser.Username,
+		}
+
+		tmpl, err := template.ParseFiles("templates/auditsample.html")
+		if err != nil {
+			logger.Errorf("抽检-模板解析失败: %v", err)
+			http.Error(w, "模板解析失败: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = tmpl.Execute(w, data)
+		if err != nil {
+			logger.Errorf("抽检-模板渲染失败: %v", err)
+			http.Error(w, "模板渲染失败: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+
+	// POST: 保存抽检记录
+	if r.Method == http.MethodPost {
+		err := r.ParseForm()
+		if err != nil {
+			http.Error(w, "表单解析失败", http.StatusBadRequest)
+			return
+		}
+
+		taskIDStr := r.FormValue("task_id")
+		taskID, err := strconv.Atoi(taskIDStr)
+		if err != nil || taskID <= 0 {
+			http.Error(w, "无效的任务ID", http.StatusBadRequest)
+			return
+		}
+
+		// 验证任务是否存在且状态为"已完成"
+		var auditStatus string
+		checkSQL := "SELECT audit_status FROM audit_tasks WHERE id = ?"
+		err = db.DBInstance.QueryRow(checkSQL, taskID).Scan(&auditStatus)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "档案不存在", http.StatusNotFound)
+			} else {
+				http.Error(w, "查询档案失败: "+err.Error(), http.StatusInternalServerError)
+			}
+			return
+		}
+
+		if auditStatus != "已完成" {
+			http.Error(w, "只有审核状态为'已完成'的任务才能进行抽检", http.StatusBadRequest)
+			return
+		}
+
+		// 获取当前用户
+		currentUser := auth.GetCurrentUser(r)
+		if currentUser == nil {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+
+		sampleComment := strings.TrimSpace(r.FormValue("sample_comment"))
+		sampleResult := strings.TrimSpace(r.FormValue("sample_result"))
+
+		// 验证抽检结果
+		validResults := map[string]bool{
+			"通过":     true,
+			"不通过":   true,
+			"待整改":   true,
+		}
+		if sampleResult != "" && !validResults[sampleResult] {
+			http.Error(w, "无效的抽检结果", http.StatusBadRequest)
+			return
+		}
+
+		// 保存抽检记录
+		err = SaveSampleRecord(taskID, currentUser.Username, sampleComment, sampleResult)
+		if err != nil {
+			logger.Errorf("保存抽检记录失败: %v, taskID: %d", err, taskID)
+			http.Error(w, "保存抽检记录失败: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// 记录操作日志
+		action := fmt.Sprintf("抽检设备审核档案（档案ID：%d，结果：%s）", taskID, sampleResult)
+		operationlog.Record(r, currentUser.Username, action)
+
+		http.Redirect(w, r, "/audit/progress?message=SampleSuccess", http.StatusSeeOther)
+		return
+	}
+
+	http.Error(w, "不支持的请求方法", http.StatusMethodNotAllowed)
+}
+
+// SampleHistoryHandler: 查看抽检历史记录（返回JSON格式，用于弹窗显示）
+func SampleHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	taskIDStr := r.URL.Query().Get("task_id")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"success": false, "message": "无效的任务ID"}`))
+		return
+	}
+
+	// 验证任务是否存在
+	var exists int
+	err = db.DBInstance.QueryRow("SELECT COUNT(*) FROM audit_tasks WHERE id = ?", taskID).Scan(&exists)
+	if err != nil || exists == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"success": false, "message": "档案不存在"}`))
+		return
+	}
+
+	// 查询抽检历史记录
+	historyList, err := GetSampleHistory(taskID)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"success": false, "message": "查询抽检历史失败"}`))
+		return
+	}
+
+	// 转换为JSON格式（处理sql.NullString）
+	type HistoryItemJSON struct {
+		ID            int    `json:"id"`
+		SampledBy     string `json:"sampled_by"`
+		SampledAt     string `json:"sampled_at"`
+		SampleComment string `json:"sample_comment"`
+		SampleResult  string `json:"sample_result"`
+		CreatedAt     string `json:"created_at"`
+	}
+
+	var historyJSON []HistoryItemJSON
+	for _, item := range historyList {
+		comment := ""
+		if item.SampleComment.Valid {
+			comment = item.SampleComment.String
+		}
+		result := ""
+		if item.SampleResult.Valid {
+			result = item.SampleResult.String
+		}
+		historyJSON = append(historyJSON, HistoryItemJSON{
+			ID:            item.ID,
+			SampledBy:     item.SampledBy,
+			SampledAt:     item.SampledAt,
+			SampleComment: comment,
+			SampleResult:  result,
+			CreatedAt:     item.CreatedAt,
+		})
+	}
+
+	// 返回JSON
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	response := map[string]interface{}{
+		"success": true,
+		"data":    historyJSON,
+	}
+
+	jsonData, err := json.Marshal(response)
+	if err != nil {
+		logger.Errorf("JSON序列化失败: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"success": false, "message": "数据序列化失败"}`))
+		return
+	}
+
+	w.Write(jsonData)
 }
 
 
