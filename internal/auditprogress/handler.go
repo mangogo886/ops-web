@@ -35,10 +35,11 @@ type AuditTask struct {
 	IsSingleSoldier int // 是否单兵设备：0=否，1=是
 	ArchiveType sql.NullString // 档案类型：新增、取推、补档案
 	// 抽检相关字段
-	IsSampled   bool   // 是否已抽检
-	LastSampledAt string // 最后抽检时间
-	SampledBy   string // 最后抽检人员
-	SampleCount int    // 抽检次数
+	IsSampled       bool   // 是否已抽检
+	LastSampledAt   string // 最后抽检时间
+	SampledBy       string // 最后抽检人员
+	SampleCount     int    // 抽检次数
+	LastSampleResult string // 最近一次抽检结果
 }
 
 // 页面数据结构体
@@ -232,6 +233,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			taskList[i].LastSampledAt = info.LastSampledAt
 			taskList[i].SampledBy = info.SampledBy
 			taskList[i].SampleCount = info.SampleCount
+			taskList[i].LastSampleResult = info.LastSampleResult
 		}
 	}
 
@@ -1776,9 +1778,8 @@ func SampleHandler(w http.ResponseWriter, r *http.Request) {
 
 		// 验证抽检结果
 		validResults := map[string]bool{
-			"通过":     true,
-			"不通过":   true,
-			"待整改":   true,
+			"通过":   true,
+			"待整改": true,
 		}
 		if sampleResult != "" && !validResults[sampleResult] {
 			http.Error(w, "无效的抽检结果", http.StatusBadRequest)

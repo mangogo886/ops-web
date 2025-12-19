@@ -256,14 +256,19 @@
         margin-left: 8px;
     }
     .sample-status.pending {
-        background-color: #fff3cd;
-        color: #856404;
-        border: 1px solid #ffeaa7;
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
     }
     .sample-status.completed {
         background-color: #d4edda;
         color: #155724;
         border: 1px solid #c3e6cb;
+    }
+    .sample-status.need-fix {
+        background-color: #f4e4bc;
+        color: #8b6914;
+        border: 1px solid #d4a574;
     }
     .sample-btn {
         color: #16a085;
@@ -956,9 +961,15 @@ function confirmDelete(taskId, fileName) {
                     <td>
                         {{if eq $task.AuditStatus "已完成"}}
                             {{if $task.IsSampled}}
-                                <span class="sample-status completed" title="抽检人：{{$task.SampledBy}}&#10;抽检时间：{{$task.LastSampledAt}}{{if gt $task.SampleCount 1}}&#10;抽检次数：{{$task.SampleCount}}次{{end}}">
+                                {{if eq $task.LastSampleResult "待整改"}}
+                                <span class="sample-status need-fix" title="抽检人：{{$task.SampledBy}}&#10;最近一次抽检时间：{{$task.LastSampledAt}}&#10;抽检次数：{{$task.SampleCount}}次&#10;最近一次抽检结果：{{$task.LastSampleResult}}">
                                     已抽检{{if gt $task.SampleCount 1}}({{$task.SampleCount}}){{end}}
                                 </span>
+                                {{else}}
+                                <span class="sample-status completed" title="抽检人：{{$task.SampledBy}}&#10;最近一次抽检时间：{{$task.LastSampledAt}}&#10;抽检次数：{{$task.SampleCount}}次&#10;最近一次抽检结果：{{if $task.LastSampleResult}}{{$task.LastSampleResult}}{{else}}通过{{end}}">
+                                    已抽检{{if gt $task.SampleCount 1}}({{$task.SampleCount}}){{end}}
+                                </span>
+                                {{end}}
                             {{else}}
                                 <span class="sample-status pending">待抽检</span>
                             {{end}}

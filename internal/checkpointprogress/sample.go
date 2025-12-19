@@ -1,4 +1,4 @@
-package auditprogress
+package checkpointprogress
 
 import (
 	"database/sql"
@@ -31,7 +31,7 @@ func GetSampleInfo(taskID int) (*SampleInfo, error) {
 	// 查询任务表的抽检字段
 	var isSampled int
 	var lastSampledAt sql.NullString
-	querySQL := `SELECT is_sampled, last_sampled_at FROM audit_tasks WHERE id = ?`
+	querySQL := `SELECT is_sampled, last_sampled_at FROM checkpoint_tasks WHERE id = ?`
 	err := db.DBInstance.QueryRow(querySQL, taskID).Scan(&isSampled, &lastSampledAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -51,7 +51,7 @@ func GetSampleInfo(taskID int) (*SampleInfo, error) {
 		
 		// 查询最后一条抽检记录获取抽检人员和结果
 		var sampledBy, sampleResult sql.NullString
-		lastRecordSQL := `SELECT sampled_by, sample_result FROM audit_sample_records 
+		lastRecordSQL := `SELECT sampled_by, sample_result FROM checkpoint_sample_records 
 			WHERE task_id = ? 
 			ORDER BY sampled_at DESC 
 			LIMIT 1`
@@ -68,7 +68,7 @@ func GetSampleInfo(taskID int) (*SampleInfo, error) {
 
 	// 查询抽检次数
 	var count int
-	countSQL := `SELECT COUNT(*) FROM audit_sample_records WHERE task_id = ?`
+	countSQL := `SELECT COUNT(*) FROM checkpoint_sample_records WHERE task_id = ?`
 	err = db.DBInstance.QueryRow(countSQL, taskID).Scan(&count)
 	if err == nil {
 		info.SampleCount = count
@@ -89,7 +89,7 @@ func SaveSampleRecord(taskID int, sampledBy string, sampleComment string, sample
 	defer tx.Rollback()
 
 	// 1. 插入抽检记录
-	insertSQL := `INSERT INTO audit_sample_records 
+	insertSQL := `INSERT INTO checkpoint_sample_records 
 		(task_id, sampled_by, sampled_at, sample_comment, sample_result) 
 		VALUES (?, ?, NOW(), ?, ?)`
 	
@@ -114,7 +114,7 @@ func SaveSampleRecord(taskID int, sampledBy string, sampleComment string, sample
 	}
 
 	// 2. 更新任务表的抽检字段
-	updateSQL := `UPDATE audit_tasks 
+	updateSQL := `UPDATE checkpoint_tasks 
 		SET is_sampled = 1, last_sampled_at = NOW() 
 		WHERE id = ?`
 	_, err = tx.Exec(updateSQL, taskID)
@@ -136,7 +136,7 @@ func SaveSampleRecord(taskID int, sampledBy string, sampleComment string, sample
 // GetSampleHistory 查询任务的抽检历史记录
 func GetSampleHistory(taskID int) ([]SampleRecord, error) {
 	querySQL := `SELECT id, task_id, sampled_by, sampled_at, sample_comment, sample_result, created_at
-		FROM audit_sample_records 
+		FROM checkpoint_sample_records 
 		WHERE task_id = ? 
 		ORDER BY sampled_at DESC`
 
@@ -197,7 +197,7 @@ func BatchGetSampleInfo(taskIDs []int) (map[int]*SampleInfo, error) {
 
 	// 查询任务表的抽检字段
 	querySQL := `SELECT id, is_sampled, last_sampled_at 
-		FROM audit_tasks 
+		FROM checkpoint_tasks 
 		WHERE id IN (` + placeholders + `)`
 	
 	rows, err := db.DBInstance.Query(querySQL, args...)
@@ -236,8 +236,8 @@ func BatchGetSampleInfo(taskIDs []int) (map[int]*SampleInfo, error) {
 			var sampledBy, sampleResult sql.NullString
 			var count int
 			lastSQL := `SELECT sampled_by, sample_result,
-				(SELECT COUNT(*) FROM audit_sample_records WHERE task_id = ?) AS sample_count
-				FROM audit_sample_records 
+				(SELECT COUNT(*) FROM checkpoint_sample_records WHERE task_id = ?) AS sample_count
+				FROM checkpoint_sample_records 
 				WHERE task_id = ? 
 				ORDER BY sampled_at DESC 
 				LIMIT 1`
