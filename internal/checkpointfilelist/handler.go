@@ -125,7 +125,6 @@ var ExportHeaders = []interface{}{
 	"终端密码", "终端厂商", "卡口启用时间（*）", "卡口撤销时间", "备注", "卡口设备类型（*）",
 	"抓拍摄像机总数（*）", "中控机编码", "中控机IP地址", "中控机端口", "中控机用户名", "中控机密码",
 	"中控机厂商", "卡口报废时间", "天线总数", "终端MAC地址（*）", "采集区域类型", "集成指挥平台卡口编号（组）",
-	"更新时间", "建档状态",
 }
 
 // 页面数据结构体
@@ -478,7 +477,7 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 		checkpoint_enabled_time, checkpoint_revoked_time, notes, checkpoint_device_type, total_capture_cameras,
 		central_control_code, central_control_ip_address, central_control_port, central_control_username,
 		central_control_password, central_control_vendor, checkpoint_scrapped_time, total_antennas,
-		terminal_mac_address, collection_area_type, integrated_command_platform_checkpoint_code, update_time, audit_status
+		terminal_mac_address, collection_area_type, integrated_command_platform_checkpoint_code
 	FROM checkpoint_details` + whereSQL + ` ORDER BY id DESC`
 
 	rows, err := db.DBInstance.Query(querySQL, args...)
@@ -537,14 +536,13 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 			&item.CentralControlIPAddress, &item.CentralControlPort, &item.CentralControlUsername,
 			&item.CentralControlPassword, &item.CentralControlVendor, &item.CheckpointScrappedTime,
 			&item.TotalAntennas, &item.TerminalMACAddress, &item.CollectionAreaType,
-			&item.IntegratedCommandPlatformCheckpointCode, &item.UpdateTime, &item.AuditStatus,
+			&item.IntegratedCommandPlatformCheckpointCode,
 		)
 		if err != nil {
 			continue
 		}
 
 		// 构建行数据
-		statusText := getAuditStatusText(item.AuditStatus)
 		rowData := []interface{}{
 			item.ID,
 			item.CheckpointCode.String, item.OriginalCheckpointCode.String, item.CheckpointName.String,
@@ -575,7 +573,7 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 			item.CentralControlUsername.String, item.CentralControlPassword.String,
 			item.CentralControlVendor.String, item.CheckpointScrappedTime.String, item.TotalAntennas.String,
 			item.TerminalMACAddress.String, item.CollectionAreaType.String,
-			item.IntegratedCommandPlatformCheckpointCode.String, item.UpdateTime, statusText,
+			item.IntegratedCommandPlatformCheckpointCode.String,
 		}
 
 		cellName, _ := excelize.CoordinatesToCellName(1, rowNum)

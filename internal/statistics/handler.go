@@ -110,16 +110,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 
-// 按日期范围获取统计数据（从audit_details表读取）
+// 按日期范围获取统计数据（从audit_details表读取，只统计新增档案）
 func getStatisticsByDateRange(startTime, endTime time.Time, auditStatus string, hasDateFilter bool) ([]StatRow, StatRow) {
-	// 构建 SQL 查询
+	// 构建 SQL 查询（关联audit_tasks表，只统计archive_type为'新增'的记录）
 	query := `
 		SELECT 
-			management_unit,
-			monitor_point_type,
+			ad.management_unit,
+			ad.monitor_point_type,
 			COUNT(*) as count
-		FROM audit_details
+		FROM audit_details ad
+		INNER JOIN audit_tasks at ON ad.task_id = at.id
 		WHERE 1=1
+		AND at.archive_type = '新增'
 	`
 
 	args := []interface{}{}
@@ -127,7 +129,7 @@ func getStatisticsByDateRange(startTime, endTime time.Time, auditStatus string, 
 	// 如果需要过滤时间（按日期范围统计）
 	if hasDateFilter && !startTime.IsZero() && !endTime.IsZero() {
 		// 使用 DATE() 函数提取日期部分进行比较
-		query += " AND DATE(update_time) >= ? AND DATE(update_time) <= ?"
+		query += " AND DATE(ad.update_time) >= ? AND DATE(ad.update_time) <= ?"
 		args = append(args, startTime.Format("2006-01-02"))
 		args = append(args, endTime.Format("2006-01-02"))
 	}
@@ -136,12 +138,12 @@ func getStatisticsByDateRange(startTime, endTime time.Time, auditStatus string, 
 	if auditStatus != "" {
 		statusInt, err := strconv.Atoi(auditStatus)
 		if err == nil && (statusInt == 0 || statusInt == 1 || statusInt == 2) {
-			query += " AND audit_status = ?"
+			query += " AND ad.audit_status = ?"
 			args = append(args, statusInt)
 		}
 	}
 
-	query += " GROUP BY management_unit, monitor_point_type ORDER BY management_unit, monitor_point_type"
+	query += " GROUP BY ad.management_unit, ad.monitor_point_type ORDER BY ad.management_unit, ad.monitor_point_type"
 
 	rows, err := db.DBInstance.Query(query, args...)
 	if err != nil {

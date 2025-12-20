@@ -16,6 +16,7 @@ import (
     "ops-web/internal/statistics"
     "ops-web/internal/taskconfig"
     "ops-web/internal/user"
+    "ops-web/internal/permission"
 )
 
 func main() {
@@ -142,6 +143,10 @@ func main() {
     http.HandleFunc("/taskconfig/backup-database", auth.RequireAdmin(taskconfig.BackupDatabaseHandler))
     http.HandleFunc("/taskconfig/backup-files", auth.RequireAdmin(taskconfig.BackupFileHandler))
 
+    // ===== 权限设置（需要管理员权限） =====
+    http.HandleFunc("/permission", auth.RequireAdmin(permission.Handler))
+    http.HandleFunc("/permission/save", auth.RequireAdmin(permission.SaveHandler))
+
     // 2.1. 初始化定时任务调度器
     taskconfig.InitScheduler()
     
@@ -153,11 +158,6 @@ func main() {
     baseURL := fmt.Sprintf("http://%s:%s", db.AppConfig.ServerHost, db.AppConfig.ServerPort)
     
     log.Printf("Server starting on %s", baseURL)
-    log.Printf("登录页面: %s/login", baseURL)
-    log.Printf("统计信息: %s/stats", baseURL)
-    log.Printf("设备建档明细: %s/device/filelist", baseURL)
-    log.Printf("卡口建档明细: %s/checkpoint/filelist", baseURL)
-    log.Printf("用户管理: %s/users", baseURL)
     
     if err := http.ListenAndServe(serverAddr, nil); err != nil {
         logger.Errorf("HTTP服务启动失败: %v", err)

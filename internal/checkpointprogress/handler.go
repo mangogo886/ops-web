@@ -12,12 +12,15 @@ import (
 	"ops-web/internal/db"
 	"ops-web/internal/logger"
 	"ops-web/internal/operationlog"
+	"ops-web/internal/permission"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -65,6 +68,9 @@ type PageData struct {
 	Query         string
 	ImportMessage string
 	ImportCount   int
+	// 权限信息
+	CanImport bool // 是否可以导入
+	CanDelete bool // 是否可以删除
 }
 
 // Handler: 卡口审核进度列表页 (GET)
@@ -117,6 +123,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			"新增":   true,
 			"取推":   true,
 			"补档案": true,
+			"变更":   true,
 		}
 		if validTypes[archiveType] {
 			whereSQL += " AND archive_type = ?"
@@ -306,6 +313,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 4. 准备数据并渲染模板
+	// 检查权限（currentUser已在前面定义）
+	canImport := true
+	canDelete := true
+	if currentUser != nil && currentUser.RoleCode != 0 {
+		// 普通用户需要检查权限设置
+		canImport = permission.CheckPermission(currentUser, "allow_checkpoint_audit_import")
+		canDelete = permission.CheckPermission(currentUser, "allow_checkpoint_audit_delete")
+	}
+
 	data := PageData{
 		Title:         "卡口审核进度",
 		ActiveMenu:    "audit",
@@ -327,6 +343,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		FirstPage:     1,
 		LastPage:      totalPages,
 		Query:         query,
+		CanImport:     canImport,
+		CanDelete:     canDelete,
 		ImportMessage: importMsg,
 		ImportCount:   importCount,
 	}
@@ -351,6 +369,23 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Redirect(w, r, "/checkpoint/progress", http.StatusSeeOther)
 		return
+	}
+
+	// 检查权限
+	currentUser := auth.GetCurrentUser(r)
+	if currentUser == nil {
+		http.Error(w, "未登录", http.StatusUnauthorized)
+		return
+	}
+	
+	// 如果不是管理员，检查权限设置
+	if currentUser.RoleCode != 0 {
+		if !permission.CheckPermission(currentUser, "allow_checkpoint_audit_import") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"error": "权限不足，请联系管理员开通卡口审核进度档案导入权限"}`))
+			return
+		}
 	}
 
 	// 解析表单数据
@@ -379,9 +414,10 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 		"新增": true,
 		"取推": true,
 		"补档案": true,
+		"变更": true,
 	}
 	if !validArchiveTypes[archiveType] {
-		http.Error(w, "档案类型值无效，必须是：新增、取推、补档案", http.StatusBadRequest)
+		http.Error(w, "档案类型值无效，必须是：新增、取推、补档案、变更", http.StatusBadRequest)
 		return
 	}
 
@@ -511,6 +547,26 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 		_, execErr := stmt.Exec(params...)
 		if execErr != nil {
 			tx.Rollback()
+			
+			// 检查是否是唯一约束错误（checkpoint_code字段）
+			isUniqueErr, fieldName, fieldValue := checkUniqueConstraintError(execErr, "checkpoint_code")
+			if isUniqueErr {
+				logger.Errorf("卡口审核进度-导入失败，第%d行数据违反唯一约束: checkpoint_code=%s, 文件名: %s", i+1, fieldValue, fileHeader.Filename)
+				
+				// 返回JSON格式的错误信息，前端可以弹窗显示
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusBadRequest)
+				errorResponse := map[string]interface{}{
+					"error":      "唯一约束违反",
+					"message":    fmt.Sprintf("第 %d 行数据违反唯一约束", i+1),
+					"field":      fieldName,
+					"fieldValue": fieldValue,
+					"detail":     fmt.Sprintf("卡口编号 '%s' 已存在，不能重复导入", fieldValue),
+				}
+				json.NewEncoder(w).Encode(errorResponse)
+				return
+			}
+			
 			logger.Errorf("卡口审核进度-导入失败，第%d行数据错误: %v, 文件名: %s", i+1, execErr, fileHeader.Filename)
 			errMsg := fmt.Sprintf("导入失败：第 %d 行数据错误。详细信息: %v", i+1, execErr)
 			http.Error(w, errMsg, http.StatusInternalServerError)
@@ -805,6 +861,36 @@ func toDBValue(s string, required bool) interface{} {
 	return s
 }
 
+// 检测是否是唯一约束错误，并提取违反约束的字段值
+// 返回 (isUniqueError, fieldName, fieldValue)
+func checkUniqueConstraintError(err error, fieldName string) (bool, string, string) {
+	if err == nil {
+		return false, "", ""
+	}
+
+	// 检查是否是MySQL错误
+	mysqlErr, ok := err.(*mysql.MySQLError)
+	if !ok {
+		return false, "", ""
+	}
+
+	// MySQL唯一约束错误代码是1062
+	if mysqlErr.Number != 1062 {
+		return false, "", ""
+	}
+
+	// 从错误信息中提取字段值
+	// 错误信息格式: "Duplicate entry 'xxx' for key 'uk_checkpoint_code'"
+	// 使用正则表达式提取 'xxx' 部分
+	re := regexp.MustCompile(`Duplicate entry '([^']+)' for key`)
+	matches := re.FindStringSubmatch(mysqlErr.Message)
+	if len(matches) >= 2 {
+		return true, fieldName, matches[1]
+	}
+
+	return true, fieldName, ""
+}
+
 // DetailHandler: 查看档案明细
 func DetailHandler(w http.ResponseWriter, r *http.Request) {
 	taskIDStr := r.URL.Query().Get("task_id")
@@ -960,7 +1046,7 @@ func DetailExportHandler(w http.ResponseWriter, r *http.Request) {
 		checkpoint_enabled_time, checkpoint_revoked_time, notes, checkpoint_device_type, total_capture_cameras,
 		central_control_code, central_control_ip_address, central_control_port, central_control_username,
 		central_control_password, central_control_vendor, checkpoint_scrapped_time, total_antennas,
-		terminal_mac_address, collection_area_type, integrated_command_platform_checkpoint_code, update_time, audit_status
+		terminal_mac_address, collection_area_type, integrated_command_platform_checkpoint_code
 	FROM checkpoint_details WHERE task_id = ? ORDER BY id`
 
 	rows, err := db.DBInstance.Query(querySQL, taskID)
@@ -990,7 +1076,6 @@ func DetailExportHandler(w http.ResponseWriter, r *http.Request) {
 		"终端密码", "终端厂商", "卡口启用时间（*）", "卡口撤销时间", "备注", "卡口设备类型（*）",
 		"抓拍摄像机总数（*）", "中控机编码", "中控机IP地址", "中控机端口", "中控机用户名", "中控机密码",
 		"中控机厂商", "卡口报废时间", "天线总数", "终端MAC地址（*）", "采集区域类型", "集成指挥平台卡口编号（组）",
-		"更新时间", "建档状态",
 	}
 
 	// 写入表头
@@ -1035,14 +1120,13 @@ func DetailExportHandler(w http.ResponseWriter, r *http.Request) {
 			&item.CentralControlIPAddress, &item.CentralControlPort, &item.CentralControlUsername,
 			&item.CentralControlPassword, &item.CentralControlVendor, &item.CheckpointScrappedTime,
 			&item.TotalAntennas, &item.TerminalMACAddress, &item.CollectionAreaType,
-			&item.IntegratedCommandPlatformCheckpointCode, &item.UpdateTime, &item.AuditStatus,
+			&item.IntegratedCommandPlatformCheckpointCode,
 		)
 		if err != nil {
 			continue
 		}
 
 		// 构建行数据
-		statusText := getAuditStatusText(item.AuditStatus)
 		rowData := []interface{}{
 			item.ID,
 			item.CheckpointCode.String, item.OriginalCheckpointCode.String, item.CheckpointName.String,
@@ -1073,7 +1157,7 @@ func DetailExportHandler(w http.ResponseWriter, r *http.Request) {
 			item.CentralControlUsername.String, item.CentralControlPassword.String,
 			item.CentralControlVendor.String, item.CheckpointScrappedTime.String, item.TotalAntennas.String,
 			item.TerminalMACAddress.String, item.CollectionAreaType.String,
-			item.IntegratedCommandPlatformCheckpointCode.String, item.UpdateTime, statusText,
+			item.IntegratedCommandPlatformCheckpointCode.String,
 		}
 
 		cellName, _ := excelize.CoordinatesToCellName(1, rowNum)
@@ -1126,7 +1210,6 @@ var TemplateHeaders = []interface{}{
 	"终端密码", "终端厂商", "卡口启用时间（*）", "卡口撤销时间", "备注", "卡口设备类型（*）",
 	"抓拍摄像机总数（*）", "中控机编码", "中控机IP地址", "中控机端口", "中控机用户名", "中控机密码",
 	"中控机厂商", "卡口报废时间", "天线总数", "终端MAC地址（*）", "采集区域类型", "集成指挥平台卡口编号（组）",
-	"更新时间",
 }
 
 // DownloadTemplateHandler: 下载导入模板
@@ -1154,6 +1237,23 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Redirect(w, r, "/checkpoint/progress", http.StatusSeeOther)
 		return
+	}
+
+	// 检查权限
+	currentUser := auth.GetCurrentUser(r)
+	if currentUser == nil {
+		http.Error(w, "未登录", http.StatusUnauthorized)
+		return
+	}
+	
+	// 如果不是管理员，检查权限设置
+	if currentUser.RoleCode != 0 {
+		if !permission.CheckPermission(currentUser, "allow_checkpoint_audit_delete") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"error": "权限不足，请联系管理员开通卡口审核进度档案删除权限"}`))
+			return
+		}
 	}
 
 	// 获取要删除的任务ID
@@ -1201,7 +1301,28 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 先删除关联的明细记录
+	// 按顺序删除关联记录（先删除子表，再删除父表）
+	// 1. 删除审核历史记录
+	deleteHistorySQL := "DELETE FROM checkpoint_audit_history WHERE task_id = ?"
+	_, err = tx.Exec(deleteHistorySQL, taskID)
+	if err != nil {
+		tx.Rollback()
+		logger.Errorf("删除审核历史记录失败: %v, taskID: %d", err, taskID)
+		http.Error(w, "删除审核历史记录失败: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 2. 删除抽检记录
+	deleteSampleSQL := "DELETE FROM checkpoint_sample_records WHERE task_id = ?"
+	_, err = tx.Exec(deleteSampleSQL, taskID)
+	if err != nil {
+		tx.Rollback()
+		logger.Errorf("删除抽检记录失败: %v, taskID: %d", err, taskID)
+		http.Error(w, "删除抽检记录失败: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 3. 删除关联的明细记录
 	deleteDetailsSQL := "DELETE FROM checkpoint_details WHERE task_id = ?"
 	_, err = tx.Exec(deleteDetailsSQL, taskID)
 	if err != nil {
@@ -1210,7 +1331,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 再删除任务记录
+	// 4. 最后删除任务记录
 	deleteTaskSQL := "DELETE FROM checkpoint_tasks WHERE id = ?"
 	_, err = tx.Exec(deleteTaskSQL, taskID)
 	if err != nil {
@@ -1227,10 +1348,10 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 记录删除操作日志
-	currentUser := auth.GetCurrentUser(r)
-	if currentUser != nil {
+	currentUser2 := auth.GetCurrentUser(r)
+	if currentUser2 != nil {
 		action := fmt.Sprintf("删除卡口审核档案（档案名称：%s，机构：%s，包含 %d 条明细）", task.FileName, task.Organization, detailCount)
-		operationlog.Record(r, currentUser.Username, action)
+		operationlog.Record(r, currentUser2.Username, action)
 	}
 
 	// 重定向回列表页（保留查询参数）

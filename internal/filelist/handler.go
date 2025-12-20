@@ -43,7 +43,7 @@ var ExportHeaders = map[string]string{
 	"online_duration": "在线时长", "offline_duration": "离线时长", "signaling_delay": "信令时延",
 	"video_stream_delay": "视频流时延", "key_frame_delay": "关键帧时延", "recording_retention_days": "录像保存天数（*）",
 	"storage_device_code": "存储设备编码", "storage_channel_number": "存储通道号", "storage_type": "存储类型",
-	"cache_settings": "缓存设置", "notes": "备注", "collection_area_type": "采集区域类型（*）", "update_time": "更新时间",
+	"cache_settings": "缓存设置", "notes": "备注", "collection_area_type": "采集区域类型（*）",
 }
 
 // 模板下载时的表头定义 (73列)
@@ -59,7 +59,7 @@ var TemplateHeaders = []interface{}{
 	"设备用户名", "设备口令", "通道号", "连接协议", "启用时间（*）", "报废时间", "设备状态（*）",
 	"巡检状态", "视频丢失", "色彩失真", "视频模糊", "亮度异常", "视频干扰", "视频卡顿", "视频遮挡",
 	"场景变更", "在线时长", "离线时长", "信令时延", "视频流时延", "关键帧时延",
-	"录像保存天数（*）", "存储设备编码", "存储通道号", "存储类型", "缓存设置", "备注", "采集区域类型（*）", "更新时间",
+	"录像保存天数（*）", "存储设备编码", "存储通道号", "存储类型", "缓存设置", "备注", "采集区域类型（*）",
 }
 
 // 数据库记录对应的结构体 (73字段) - 用于导出和导入
@@ -674,7 +674,7 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 		scene_change, online_duration, offline_duration, signaling_delay, 
 		video_stream_delay, key_frame_delay, recording_retention_days, 
 		storage_device_code, storage_channel_number, storage_type, 
-		cache_settings, notes, collection_area_type, update_time
+		cache_settings, notes, collection_area_type
 	FROM audit_details` + whereSQL + ` ORDER BY id DESC`
 
 	rows, err := db.DBInstance.Query(querySQL, args...)
@@ -722,7 +722,6 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 			&item.VideoStreamDelay, &item.KeyFrameDelay, &item.RecordingRetentionDays,
 			&item.StorageDeviceCode, &item.StorageChannelNumber, &item.StorageType,
 			&item.CacheSettings, &item.Notes, &item.CollectionAreaType,
-			&item.UpdateTime,
 		)
 		if err != nil {
 			continue
@@ -754,7 +753,6 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 			item.VideoStreamDelay.Int64, item.KeyFrameDelay.Int64, item.RecordingRetentionDays,
 			item.StorageDeviceCode.String, item.StorageChannelNumber.String, item.StorageType.String,
 			item.CacheSettings.String, item.Notes.String, item.CollectionAreaType,
-			item.UpdateTime,
 		}
 
 		cellName, _ := excelize.CoordinatesToCellName(1, rowNum)

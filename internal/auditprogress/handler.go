@@ -12,12 +12,15 @@ import (
 	"ops-web/internal/filelist"
 	"ops-web/internal/logger"
 	"ops-web/internal/operationlog"
+	"ops-web/internal/permission"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -69,6 +72,9 @@ type PageData struct {
 	ImportMessage string
 	ImportCount   int
 	HighlightTaskID int // 需要高亮的任务ID（用于从提醒页面跳转过来时定位）
+	// 权限信息
+	CanImport bool // 是否可以导入
+	CanDelete bool // 是否可以删除
 }
 
 // Handler: 审核进度列表页 (GET)
@@ -122,6 +128,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			"新增":   true,
 			"取推":   true,
 			"补档案": true,
+			"变更":   true,
 		}
 		if validTypes[archiveType] {
 			whereSQL += " AND archive_type = ?"
@@ -316,6 +323,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		operationlog.Record(r, currentUser.Username, action)
 	}
 
+	// 检查权限
+	canImport := true
+	canDelete := true
+	if currentUser != nil && currentUser.RoleCode != 0 {
+		// 普通用户需要检查权限设置
+		canImport = permission.CheckPermission(currentUser, "allow_device_audit_import")
+		canDelete = permission.CheckPermission(currentUser, "allow_device_audit_delete")
+	}
+
 	// 计算当前页记录范围
 	startRecord := (page-1)*pageSize + 1
 	endRecord := page * pageSize
@@ -406,6 +422,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		ImportMessage: importMsg,
 		ImportCount:   importCount,
 		HighlightTaskID: highlightTaskID, // 需要高亮的任务ID
+		CanImport:     canImport,
+		CanDelete:     canDelete,
 	}
 
 	tmpl, err := template.ParseFiles("templates/auditprogress.html")
@@ -428,6 +446,23 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Redirect(w, r, "/audit/progress", http.StatusSeeOther)
 		return
+	}
+
+	// 检查权限
+	currentUser := auth.GetCurrentUser(r)
+	if currentUser == nil {
+		http.Error(w, "未登录", http.StatusUnauthorized)
+		return
+	}
+	
+	// 如果不是管理员，检查权限设置
+	if currentUser.RoleCode != 0 {
+		if !permission.CheckPermission(currentUser, "allow_device_audit_import") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"error": "权限不足，请联系管理员开通设备审核进度档案导入权限"}`))
+			return
+		}
 	}
 
 	// 解析表单数据
@@ -495,9 +530,10 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 		"新增": true,
 		"取推": true,
 		"补档案": true,
+		"变更": true,
 	}
 	if !validArchiveTypes[archiveType] {
-		http.Error(w, "档案类型值无效，必须是：新增、取推、补档案", http.StatusBadRequest)
+		http.Error(w, "档案类型值无效，必须是：新增、取推、补档案、变更", http.StatusBadRequest)
 		return
 	}
 
@@ -629,6 +665,26 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 		_, execErr := stmt.Exec(params...)
 		if execErr != nil {
 			tx.Rollback()
+			
+			// 检查是否是唯一约束错误（device_code字段）
+			isUniqueErr, fieldName, fieldValue := checkUniqueConstraintError(execErr, "device_code")
+			if isUniqueErr {
+				logger.Errorf("审核进度-导入失败，第%d行数据违反唯一约束: device_code=%s, 文件名: %s", i+1, fieldValue, fileHeader.Filename)
+				
+				// 返回JSON格式的错误信息，前端可以弹窗显示
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusBadRequest)
+				errorResponse := map[string]interface{}{
+					"error":      "唯一约束违反",
+					"message":    fmt.Sprintf("第 %d 行数据违反唯一约束", i+1),
+					"field":      fieldName,
+					"fieldValue": fieldValue,
+					"detail":     fmt.Sprintf("设备编码 '%s' 已存在，不能重复导入", fieldValue),
+				}
+				json.NewEncoder(w).Encode(errorResponse)
+				return
+			}
+			
 			logger.Errorf("审核进度-导入失败，第%d行数据错误: %v, 文件名: %s", i+1, execErr, fileHeader.Filename)
 			errMsg := fmt.Sprintf("导入失败：第 %d 行数据错误。详细信息: %v", i+1, execErr)
 			http.Error(w, errMsg, http.StatusInternalServerError)
@@ -946,6 +1002,36 @@ func toDBValue(s string, required bool) interface{} {
 	return s
 }
 
+// 检测是否是唯一约束错误，并提取违反约束的字段值
+// 返回 (isUniqueError, fieldName, fieldValue)
+func checkUniqueConstraintError(err error, fieldName string) (bool, string, string) {
+	if err == nil {
+		return false, "", ""
+	}
+
+	// 检查是否是MySQL错误
+	mysqlErr, ok := err.(*mysql.MySQLError)
+	if !ok {
+		return false, "", ""
+	}
+
+	// MySQL唯一约束错误代码是1062
+	if mysqlErr.Number != 1062 {
+		return false, "", ""
+	}
+
+	// 从错误信息中提取字段值
+	// 错误信息格式: "Duplicate entry 'xxx' for key 'uk_device_code'"
+	// 使用正则表达式提取 'xxx' 部分
+	re := regexp.MustCompile(`Duplicate entry '([^']+)' for key`)
+	matches := re.FindStringSubmatch(mysqlErr.Message)
+	if len(matches) >= 2 {
+		return true, fieldName, matches[1]
+	}
+
+	return true, fieldName, ""
+}
+
 // DetailHandler: 查看档案明细
 func DetailHandler(w http.ResponseWriter, r *http.Request) {
 	taskIDStr := r.URL.Query().Get("task_id")
@@ -1105,7 +1191,7 @@ func DetailExportHandler(w http.ResponseWriter, r *http.Request) {
 		scene_change, online_duration, offline_duration, signaling_delay, 
 		video_stream_delay, key_frame_delay, recording_retention_days, 
 		storage_device_code, storage_channel_number, storage_type, 
-		cache_settings, notes, collection_area_type, update_time
+		cache_settings, notes, collection_area_type
 	FROM audit_details WHERE task_id = ? ORDER BY id`
 
 	rows, err := db.DBInstance.Query(querySQL, taskID)
@@ -1134,7 +1220,7 @@ func DetailExportHandler(w http.ResponseWriter, r *http.Request) {
 		"设备用户名", "设备口令", "通道号", "连接协议", "启用时间（*）", "报废时间", "设备状态（*）",
 		"巡检状态", "视频丢失", "色彩失真", "视频模糊", "亮度异常", "视频干扰", "视频卡顿", "视频遮挡",
 		"场景变更", "在线时长", "离线时长", "信令时延", "视频流时延", "关键帧时延",
-		"录像保存天数（*）", "存储设备编码", "存储通道号", "存储类型", "缓存设置", "备注", "采集区域类型（*）", "更新时间",
+		"录像保存天数（*）", "存储设备编码", "存储通道号", "存储类型", "缓存设置", "备注", "采集区域类型（*）",
 	}
 
 	// 写入表头
@@ -1169,7 +1255,6 @@ func DetailExportHandler(w http.ResponseWriter, r *http.Request) {
 			&item.VideoStreamDelay, &item.KeyFrameDelay, &item.RecordingRetentionDays,
 			&item.StorageDeviceCode, &item.StorageChannelNumber, &item.StorageType,
 			&item.CacheSettings, &item.Notes, &item.CollectionAreaType,
-			&item.UpdateTime,
 		)
 		if err != nil {
 			continue
@@ -1201,7 +1286,6 @@ func DetailExportHandler(w http.ResponseWriter, r *http.Request) {
 			item.VideoStreamDelay.Int64, item.KeyFrameDelay.Int64, item.RecordingRetentionDays,
 			item.StorageDeviceCode.String, item.StorageChannelNumber.String, item.StorageType.String,
 			item.CacheSettings.String, item.Notes.String, item.CollectionAreaType,
-			item.UpdateTime,
 		}
 
 		cellName, _ := excelize.CoordinatesToCellName(1, rowNum)
@@ -1247,7 +1331,7 @@ var TemplateHeaders = []interface{}{
 	"巡检状态", "视频丢失", "色彩失真", "视频模糊", "亮度异常", "视频干扰", "视频卡顿", "视频遮挡",
 	"场景变更", "在线时长", "离线时长", "信令时延", "视频流时延", "关键帧时延",
 	"录像保存天数（*）", "存储设备编码", "存储通道号", "存储类型", "缓存设置", "备注",
-	"采集区域类型（*）", "更新时间",
+	"采集区域类型（*）",
 }
 
 // DownloadTemplateHandler: 下载导入模板
@@ -1275,6 +1359,23 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Redirect(w, r, "/audit/progress", http.StatusSeeOther)
 		return
+	}
+
+	// 检查权限
+	currentUser := auth.GetCurrentUser(r)
+	if currentUser == nil {
+		http.Error(w, "未登录", http.StatusUnauthorized)
+		return
+	}
+	
+	// 如果不是管理员，检查权限设置
+	if currentUser.RoleCode != 0 {
+		if !permission.CheckPermission(currentUser, "allow_device_audit_delete") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"error": "权限不足，请联系管理员开通设备审核进度档案删除权限"}`))
+			return
+		}
 	}
 
 	// 获取要删除的任务ID
@@ -1322,7 +1423,38 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 先删除关联的明细记录
+	// 按顺序删除关联记录（先删除子表，再删除父表）
+	// 1. 删除审核历史记录
+	deleteHistorySQL := "DELETE FROM audit_audit_history WHERE task_id = ?"
+	_, err = tx.Exec(deleteHistorySQL, taskID)
+	if err != nil {
+		tx.Rollback()
+		logger.Errorf("删除审核历史记录失败: %v, taskID: %d", err, taskID)
+		http.Error(w, "删除审核历史记录失败: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 2. 删除录像提醒记录
+	deleteReminderSQL := "DELETE FROM audit_video_reminders WHERE task_id = ?"
+	_, err = tx.Exec(deleteReminderSQL, taskID)
+	if err != nil {
+		tx.Rollback()
+		logger.Errorf("删除录像提醒记录失败: %v, taskID: %d", err, taskID)
+		http.Error(w, "删除录像提醒记录失败: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 3. 删除抽检记录
+	deleteSampleSQL := "DELETE FROM audit_sample_records WHERE task_id = ?"
+	_, err = tx.Exec(deleteSampleSQL, taskID)
+	if err != nil {
+		tx.Rollback()
+		logger.Errorf("删除抽检记录失败: %v, taskID: %d", err, taskID)
+		http.Error(w, "删除抽检记录失败: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 4. 删除关联的明细记录
 	deleteDetailsSQL := "DELETE FROM audit_details WHERE task_id = ?"
 	_, err = tx.Exec(deleteDetailsSQL, taskID)
 	if err != nil {
@@ -1331,7 +1463,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 再删除任务记录
+	// 5. 最后删除任务记录
 	deleteTaskSQL := "DELETE FROM audit_tasks WHERE id = ?"
 	_, err = tx.Exec(deleteTaskSQL, taskID)
 	if err != nil {
@@ -1348,10 +1480,10 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 记录删除操作日志
-	currentUser := auth.GetCurrentUser(r)
-	if currentUser != nil {
+	currentUser2 := auth.GetCurrentUser(r)
+	if currentUser2 != nil {
 		action := fmt.Sprintf("删除审核档案（档案名称：%s，机构：%s，包含 %d 条明细）", task.FileName, task.Organization, detailCount)
-		operationlog.Record(r, currentUser.Username, action)
+		operationlog.Record(r, currentUser2.Username, action)
 	}
 
 	// 重定向回列表页（保留查询参数）
