@@ -40,6 +40,8 @@ type AuditTask struct {
 	SampledBy       string // 最后抽检人员
 	SampleCount     int    // 抽检次数
 	LastSampleResult string // 最近一次抽检结果
+	// 提醒相关字段
+	ReminderCount   int    // 待处理提醒数量
 }
 
 // 页面数据结构体
@@ -66,6 +68,7 @@ type PageData struct {
 	Query         string
 	ImportMessage string
 	ImportCount   int
+	HighlightTaskID int // 需要高亮的任务ID（用于从提醒页面跳转过来时定位）
 }
 
 // Handler: 审核进度列表页 (GET)
@@ -75,6 +78,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	auditStatus := r.URL.Query().Get("audit_status") // 审核状态: 未审核, 已审核待整改, 已完成 或空
 	archiveType := r.URL.Query().Get("archive_type") // 建档类型: 新增, 取推, 补档案 或空
 	sampleStatus := r.URL.Query().Get("sample_status") // 抽检状态: 全部, 已抽检, 未抽检 或空
+	taskIDStr := r.URL.Query().Get("task_id") // 任务ID，用于定位到特定任务
 	pageStr := r.URL.Query().Get("page")
 	importMsg := r.URL.Query().Get("message")
 	importCountStr := r.URL.Query().Get("count")
@@ -237,6 +241,22 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 批量获取提醒数量
+	reminderCountMap := make(map[int]int)
+	for _, taskID := range taskIDs {
+		count, err := GetReminderCountByTaskID(taskID)
+		if err == nil {
+			reminderCountMap[taskID] = count
+		}
+	}
+
+	// 填充提醒数量到任务列表
+	for i := range taskList {
+		if count, ok := reminderCountMap[taskList[i].ID]; ok {
+			taskList[i].ReminderCount = count
+		}
+	}
+
 	// 为每个任务查询附件列表
 	uploadPath := getUploadPath()
 	if uploadPath != "" {
@@ -308,6 +328,60 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 4. 准备数据并渲染模板
+	// 如果提供了task_id，需要找到该任务所在的页面
+	var highlightTaskID int
+	if taskIDStr != "" {
+		taskID, err := strconv.Atoi(taskIDStr)
+		if err == nil && taskID > 0 {
+			// 检查任务是否在当前页面的任务列表中
+			found := false
+			for _, task := range taskList {
+				if task.ID == taskID {
+					found = true
+					highlightTaskID = taskID
+					break
+				}
+			}
+			// 如果不在当前页，需要找到任务所在的页面
+			if !found {
+				var taskPage int
+				var taskExists int
+				err = db.DBInstance.QueryRow("SELECT COUNT(*) FROM audit_tasks WHERE id = ?", taskID).Scan(&taskExists)
+				if err == nil && taskExists > 0 {
+					// 计算任务所在的页面（按ID排序，找到任务的位置）
+					var taskPosition int
+					err = db.DBInstance.QueryRow(`
+						SELECT COUNT(*) + 1 FROM audit_tasks 
+						WHERE id < ? AND (`+strings.TrimPrefix(whereSQL, " WHERE 1=1")+`)`,
+						append([]interface{}{taskID}, args...)...).Scan(&taskPosition)
+					if err == nil {
+						taskPage = (taskPosition-1)/pageSize + 1
+						if taskPage != page {
+							// 重定向到任务所在的页面
+							redirectURL := fmt.Sprintf("/audit/progress?page=%d&task_id=%d", taskPage, taskID)
+							if searchName != "" {
+								redirectURL += "&file_name=" + searchName
+							}
+							if auditStatus != "" {
+								redirectURL += "&audit_status=" + auditStatus
+							}
+							if archiveType != "" {
+								redirectURL += "&archive_type=" + archiveType
+							}
+							if sampleStatus != "" {
+								redirectURL += "&sample_status=" + sampleStatus
+							}
+							http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+							return
+						}
+					}
+				}
+			} else {
+				highlightTaskID = taskID
+			}
+		}
+	}
+
 	data := PageData{
 		Title:         "审核进度",
 		ActiveMenu:    "audit",
@@ -331,6 +405,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Query:         query,
 		ImportMessage: importMsg,
 		ImportCount:   importCount,
+		HighlightTaskID: highlightTaskID, // 需要高亮的任务ID
 	}
 
 	tmpl, err := template.ParseFiles("templates/auditprogress.html")
@@ -735,6 +810,20 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 			tx.Rollback()
 			http.Error(w, "更新明细状态失败: "+err.Error(), http.StatusInternalServerError)
 			return
+		}
+
+		// 解析审核意见，检查是否有录像天数不足的情况
+		if auditComment != "" {
+			earliestDate, requiredDays, found := ParseVideoDaysIssue(auditComment)
+			if found {
+				// 获取当前时间作为审核日期
+				auditDate := time.Now()
+				err = CreateVideoReminder(tx, taskID, earliestDate, requiredDays, auditDate)
+				if err != nil {
+					// 记录错误但不阻断流程
+					logger.Errorf("创建录像提醒任务失败: %v, taskID: %d", err, taskID)
+				}
+			}
 		}
 
 		// 提交事务
@@ -1883,4 +1972,278 @@ func SampleHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonData)
 }
 
+// VideoReminderHandler: 录像提醒列表页
+func VideoReminderHandler(w http.ResponseWriter, r *http.Request) {
+	// 获取查询参数
+	status := r.URL.Query().Get("status") // 状态筛选：pending, notified, completed 或空
+	pageStr := r.URL.Query().Get("page")
+
+	page, _ := strconv.Atoi(pageStr)
+	if page < 1 {
+		page = 1
+	}
+
+	pageSize := 30
+
+	// 查询提醒列表
+	reminders, totalCount, err := GetVideoReminders(status, page, pageSize)
+	if err != nil {
+		logger.Errorf("查询录像提醒列表失败: %v", err)
+		http.Error(w, "查询提醒列表失败: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 计算分页信息
+	totalPages := (totalCount + pageSize - 1) / pageSize
+	if totalPages == 0 {
+		totalPages = 1
+	}
+	if page > totalPages {
+		page = totalPages
+	}
+
+	// 计算剩余天数
+	type ReminderDisplay struct {
+		VideoReminder
+		RemainingDays int    // 剩余天数（负数表示已过期）
+		StatusText    string // 状态文本
+	}
+
+	var displayList []ReminderDisplay
+	today := time.Now()
+	for _, reminder := range reminders {
+		remainingDays := int(reminder.ReminderDate.Sub(today).Hours() / 24)
+		statusText := map[string]string{
+			"pending":  "待处理",
+			"notified": "已通知",
+			"completed": "已完成",
+		}[reminder.Status]
+		if statusText == "" {
+			statusText = reminder.Status
+		}
+
+		displayList = append(displayList, ReminderDisplay{
+			VideoReminder: reminder,
+			RemainingDays: remainingDays,
+			StatusText:    statusText,
+		})
+	}
+
+	// 构建查询参数字符串
+	queryParams := []string{}
+	if status != "" {
+		queryParams = append(queryParams, "status="+status)
+	}
+	query := strings.Join(queryParams, "&")
+
+	// 准备数据
+	type ReminderPageData struct {
+		Title         string
+		ActiveMenu    string
+		SubMenu       string
+		List          []ReminderDisplay
+		Status        string
+		CurrentPage   int
+		TotalPages    int
+		TotalCount    int
+		StartRecord   int
+		EndRecord     int
+		HasPrev       bool
+		HasNext       bool
+		PrevPage      int
+		NextPage      int
+		FirstPage     int
+		LastPage      int
+		Query         string
+	}
+
+	startRecord := (page-1)*pageSize + 1
+	endRecord := page * pageSize
+	if endRecord > totalCount {
+		endRecord = totalCount
+	}
+	if totalCount == 0 {
+		startRecord = 0
+		endRecord = 0
+	}
+
+	data := ReminderPageData{
+		Title:       "录像天数不足提醒",
+		ActiveMenu:  "audit",
+		SubMenu:     "video_reminders",
+		List:        displayList,
+		Status:      status,
+		CurrentPage: page,
+		TotalPages:  totalPages,
+		TotalCount:  totalCount,
+		StartRecord: startRecord,
+		EndRecord:   endRecord,
+		HasPrev:     page > 1,
+		HasNext:     page < totalPages,
+		PrevPage:    page - 1,
+		NextPage:    page + 1,
+		FirstPage:   1,
+		LastPage:    totalPages,
+		Query:       query,
+	}
+
+	tmpl, err := template.ParseFiles("templates/auditvideoreminder.html")
+	if err != nil {
+		logger.Errorf("录像提醒列表-模板解析失败: %v", err)
+		http.Error(w, "模板解析失败: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		logger.Errorf("录像提醒列表-模板渲染失败: %v", err)
+		http.Error(w, "模板渲染失败: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// CompleteReminderHandler: 标记提醒为已完成
+func CompleteReminderHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "方法不允许", http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "表单解析失败", http.StatusBadRequest)
+		return
+	}
+
+	reminderIDStr := r.FormValue("reminder_id")
+	reminderID, err := strconv.Atoi(reminderIDStr)
+	if err != nil || reminderID <= 0 {
+		http.Error(w, "无效的提醒ID", http.StatusBadRequest)
+		return
+	}
+
+	currentUser := auth.GetCurrentUser(r)
+	if currentUser == nil {
+		http.Error(w, "未登录", http.StatusUnauthorized)
+		return
+	}
+
+	err = CompleteVideoReminder(reminderID, currentUser.Username)
+	if err != nil {
+		logger.Errorf("标记提醒为已完成失败: %v, reminderID: %d", err, reminderID)
+		http.Error(w, "标记失败: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 记录操作日志
+	action := fmt.Sprintf("标记录像提醒为已完成（提醒ID：%d）", reminderID)
+	operationlog.Record(r, currentUser.Username, action)
+
+	// 重定向回提醒列表
+	status := r.FormValue("status")
+	redirectURL := "/audit/progress/video-reminders"
+	if status != "" {
+		redirectURL += "?status=" + status
+	}
+	http.Redirect(w, r, redirectURL+"&message=CompleteSuccess", http.StatusSeeOther)
+}
+
+// ScheduleConfigHandler: 定时任务配置页面
+func ScheduleConfigHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		// 显示配置页面
+		config, err := GetScheduleConfig()
+		if err != nil {
+			logger.Errorf("获取定时配置失败: %v", err)
+			// 使用默认配置
+			config = &ScheduleConfig{
+				Frequency: "daily",
+				Hour:      1,
+				Enabled:   true,
+			}
+		}
+
+		type ConfigPageData struct {
+			Title       string
+			ActiveMenu  string
+			SubMenu     string
+			Config      *ScheduleConfig
+		}
+
+		data := ConfigPageData{
+			Title:      "录像提醒定时任务配置",
+			ActiveMenu: "audit",
+			SubMenu:    "video_reminders",
+			Config:     config,
+		}
+
+		tmpl, err := template.ParseFiles("templates/auditvideoreminderschedule.html")
+		if err != nil {
+			logger.Errorf("定时配置页面-模板解析失败: %v", err)
+			http.Error(w, "模板解析失败: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = tmpl.Execute(w, data)
+		if err != nil {
+			logger.Errorf("定时配置页面-模板渲染失败: %v", err)
+			http.Error(w, "模板渲染失败: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else if r.Method == http.MethodPost {
+		// 保存配置
+		err := r.ParseForm()
+		if err != nil {
+			http.Error(w, "表单解析失败", http.StatusBadRequest)
+			return
+		}
+
+		frequency := r.FormValue("frequency")
+		hourStr := r.FormValue("hour")
+		dayOfWeekStr := r.FormValue("day_of_week")
+		enabledStr := r.FormValue("enabled")
+
+		// 验证参数
+		if frequency != "daily" && frequency != "weekly" {
+			http.Error(w, "无效的执行频率", http.StatusBadRequest)
+			return
+		}
+
+		hour, err := strconv.Atoi(hourStr)
+		if err != nil || hour < 1 || hour > 24 {
+			http.Error(w, "无效的执行时间", http.StatusBadRequest)
+			return
+		}
+
+		var dayOfWeek int
+		if frequency == "weekly" {
+			dayOfWeek, err = strconv.Atoi(dayOfWeekStr)
+			if err != nil || dayOfWeek < 1 || dayOfWeek > 7 {
+				http.Error(w, "无效的星期几", http.StatusBadRequest)
+				return
+			}
+		}
+
+		enabled := enabledStr == "1"
+
+		currentUser := auth.GetCurrentUser(r)
+		if currentUser == nil {
+			http.Error(w, "未登录", http.StatusUnauthorized)
+			return
+		}
+
+		err = SaveScheduleConfig(frequency, hour, dayOfWeek, enabled, currentUser.Username)
+		if err != nil {
+			logger.Errorf("保存定时配置失败: %v", err)
+			http.Error(w, "保存配置失败: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// 记录操作日志
+		action := fmt.Sprintf("更新录像提醒定时任务配置（频率：%s，时间：%d:00）", frequency, hour)
+		operationlog.Record(r, currentUser.Username, action)
+
+		http.Redirect(w, r, "/audit/progress/video-reminders/schedule?message=SaveSuccess", http.StatusSeeOther)
+	}
+}
 

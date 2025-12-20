@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}} - 档案审核管理</title>
+    <style>
+    body { 
+        margin: 0; 
+        padding: 0; 
+        font-family: "Microsoft YaHei", sans-serif; 
+        display: flex; 
+        height: 100vh; 
+    }
+    
+    .sidebar { 
+        width: 220px; 
+        background-color: #2c3e50; 
+        color: white; 
+        display: flex; 
+        flex-direction: column; 
+    }
+    .sidebar h3 { 
+        text-align: center; 
+        padding: 20px 0; 
+        border-bottom: 1px solid #34495e; 
+        margin: 0; 
+    }
+    .menu-item { 
+        padding: 15px 20px; 
+        color: #ecf0f1; 
+        text-decoration: none; 
+        display: block; 
+        border-bottom: 1px solid #34495e; 
+    }
+    .menu-item:hover { 
+        background-color: #34495e; 
+    }
+    .menu-item.active { 
+        background-color: #3498db; 
+    }
+    .submenu-item {
+        padding: 12px 20px 12px 40px;
+        font-size: 14px;
+        color: #bdc3c7;
+        text-decoration: none;
+        display: block;
+        border-bottom: 1px solid #34495e;
+    }
+    .submenu-item:hover {
+        background-color: #34495e;
+    }
+    .submenu-item.active {
+        background-color: #2980b9;
+        color: white;
+    }
+    
+    .content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+    }
+    
+    h1 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+    }
+
+    .back-btn {
+        display: inline-block;
+        padding: 8px 15px;
+        background-color: #95a5a6;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .back-btn:hover {
+        background-color: #7f8c8d;
+    }
+
+    .config-container {
+        background: white;
+        padding: 30px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        max-width: 600px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .form-group select,
+    .form-group input[type="number"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .form-group select:focus,
+    .form-group input[type="number"]:focus {
+        outline: none;
+        border-color: #3498db;
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-primary {
+        background-color: #3498db;
+        color: white;
+    }
+    .btn-primary:hover {
+        background-color: #2980b9;
+    }
+    .btn-secondary {
+        background-color: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background-color: #7f8c8d;
+    }
+
+    .btn-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+    }
+
+    .info-box {
+        background-color: #e8f4f8;
+        border-left: 4px solid #3498db;
+        padding: 15px;
+        margin-top: 20px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #555;
+    }
+
+    .info-box strong {
+        color: #2c3e50;
+    }
+    </style>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var msg = window.location.search;
+        if (msg.includes('SaveSuccess')) {
+            alert('定时任务配置保存成功！');
+        }
+
+        // 当选择"每周"时，显示星期几选择框
+        var frequencySelect = document.getElementById('frequency');
+        var dayOfWeekGroup = document.getElementById('day_of_week_group');
+        
+        function toggleDayOfWeek() {
+            if (frequencySelect.value === 'weekly') {
+                dayOfWeekGroup.style.display = 'block';
+            } else {
+                dayOfWeekGroup.style.display = 'none';
+            }
+        }
+        
+        frequencySelect.addEventListener('change', toggleDayOfWeek);
+        toggleDayOfWeek(); // 初始化
+    });
+    </script>
+</head>
+<body>
+    <div class="sidebar">
+        <h3>档案审核管理</h3>
+        <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
+        <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
+        <a href="/checkpoint/filelist" class="submenu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}">卡口建档明细</a>
+        <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
+        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">设备审核进度</a>
+        <a href="/audit/progress/video-reminders" class="submenu-item active">录像天数不足提醒</a>
+        <a href="/checkpoint/progress" class="submenu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}">卡口审核进度</a>
+        <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
+        <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
+        <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/taskconfig" class="submenu-item {{if eq .SubMenu "task_config"}}active{{end}}">任务配置</a>
+        <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
+    </div>
+
+    <div class="content">
+        <a href="/audit/progress/video-reminders" class="back-btn">← 返回录像提醒列表</a>
+        <h1>录像提醒定时任务配置</h1>
+        
+        <div class="config-container">
+            <form method="POST" action="/audit/progress/video-reminders/schedule">
+                <div class="form-group">
+                    <label for="frequency">执行频率 <span style="color: red;">*</span></label>
+                    <select id="frequency" name="frequency" required>
+                        <option value="daily" {{if eq .Config.Frequency "daily"}}selected{{end}}>每天</option>
+                        <option value="weekly" {{if eq .Config.Frequency "weekly"}}selected{{end}}>每周</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="day_of_week_group" style="display: {{if eq .Config.Frequency "weekly"}}block{{else}}none{{end}};">
+                    <label for="day_of_week">每周执行日期 <span style="color: red;">*</span></label>
+                    <select id="day_of_week" name="day_of_week">
+                        <option value="1" {{if and (eq .Config.Frequency "weekly") .Config.DayOfWeek.Valid (eq .Config.DayOfWeek.Int64 1)}}selected{{end}}>周一</option>
+                        <option value="2" {{if and (eq .Config.Frequency "weekly") .Config.DayOfWeek.Valid (eq .Config.DayOfWeek.Int64 2)}}selected{{end}}>周二</option>
+                        <option value="3" {{if and (eq .Config.Frequency "weekly") .Config.DayOfWeek.Valid (eq .Config.DayOfWeek.Int64 3)}}selected{{end}}>周三</option>
+                        <option value="4" {{if and (eq .Config.Frequency "weekly") .Config.DayOfWeek.Valid (eq .Config.DayOfWeek.Int64 4)}}selected{{end}}>周四</option>
+                        <option value="5" {{if and (eq .Config.Frequency "weekly") .Config.DayOfWeek.Valid (eq .Config.DayOfWeek.Int64 5)}}selected{{end}}>周五</option>
+                        <option value="6" {{if and (eq .Config.Frequency "weekly") .Config.DayOfWeek.Valid (eq .Config.DayOfWeek.Int64 6)}}selected{{end}}>周六</option>
+                        <option value="7" {{if and (eq .Config.Frequency "weekly") .Config.DayOfWeek.Valid (eq .Config.DayOfWeek.Int64 7)}}selected{{end}}>周日</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="hour">执行时间 <span style="color: red;">*</span></label>
+                    <select id="hour" name="hour" required>
+                        <option value="1" {{if eq .Config.Hour 1}}selected{{end}}>1:00</option>
+                        <option value="2" {{if eq .Config.Hour 2}}selected{{end}}>2:00</option>
+                        <option value="3" {{if eq .Config.Hour 3}}selected{{end}}>3:00</option>
+                        <option value="4" {{if eq .Config.Hour 4}}selected{{end}}>4:00</option>
+                        <option value="5" {{if eq .Config.Hour 5}}selected{{end}}>5:00</option>
+                        <option value="6" {{if eq .Config.Hour 6}}selected{{end}}>6:00</option>
+                        <option value="7" {{if eq .Config.Hour 7}}selected{{end}}>7:00</option>
+                        <option value="8" {{if eq .Config.Hour 8}}selected{{end}}>8:00</option>
+                        <option value="9" {{if eq .Config.Hour 9}}selected{{end}}>9:00</option>
+                        <option value="10" {{if eq .Config.Hour 10}}selected{{end}}>10:00</option>
+                        <option value="11" {{if eq .Config.Hour 11}}selected{{end}}>11:00</option>
+                        <option value="12" {{if eq .Config.Hour 12}}selected{{end}}>12:00</option>
+                        <option value="13" {{if eq .Config.Hour 13}}selected{{end}}>13:00</option>
+                        <option value="14" {{if eq .Config.Hour 14}}selected{{end}}>14:00</option>
+                        <option value="15" {{if eq .Config.Hour 15}}selected{{end}}>15:00</option>
+                        <option value="16" {{if eq .Config.Hour 16}}selected{{end}}>16:00</option>
+                        <option value="17" {{if eq .Config.Hour 17}}selected{{end}}>17:00</option>
+                        <option value="18" {{if eq .Config.Hour 18}}selected{{end}}>18:00</option>
+                        <option value="19" {{if eq .Config.Hour 19}}selected{{end}}>19:00</option>
+                        <option value="20" {{if eq .Config.Hour 20}}selected{{end}}>20:00</option>
+                        <option value="21" {{if eq .Config.Hour 21}}selected{{end}}>21:00</option>
+                        <option value="22" {{if eq .Config.Hour 22}}selected{{end}}>22:00</option>
+                        <option value="23" {{if eq .Config.Hour 23}}selected{{end}}>23:00</option>
+                        <option value="24" {{if eq .Config.Hour 24}}selected{{end}}>24:00</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="enabled" name="enabled" value="1" {{if .Config.Enabled}}checked{{end}}>
+                        <label for="enabled" style="margin: 0; font-weight: normal; cursor: pointer;">启用定时任务</label>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">保存配置</button>
+                    <a href="/audit/progress/video-reminders" class="btn btn-secondary">取消</a>
+                </div>
+            </form>
+
+            <div class="info-box">
+                <strong>💡 说明：</strong><br>
+                • 定时任务会在指定的时间自动扫描到期的录像提醒任务<br>
+                • 到期的提醒任务状态会自动更新为"已通知"<br>
+                • 修改配置后，定时任务会在下次执行时应用新配置<br>
+                {{if .Config.UpdatedBy.Valid}}
+                <br>• 最后更新：{{.Config.UpdatedAt.Format "2006-01-02 15:04:05"}}（{{.Config.UpdatedBy.String}}）
+                {{end}}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

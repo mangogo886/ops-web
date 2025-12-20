@@ -1,0 +1,40 @@
+设备审核录像天数不足提醒功能SQL变更说明
+==========================================
+
+一、新增表
+----------
+1. audit_video_reminders - 设备审核录像天数不足提醒表
+
+二、表结构说明
+--------------
+audit_video_reminders 表用于存储录像天数不足的提醒任务：
+
+字段说明：
+- id: 主键ID
+- task_id: 关联的审核任务ID（外键关联audit_tasks表）
+- earliest_video_date: 最早录像日期（从审核意见中提取）
+- required_days: 要求的天数（30/90/180）
+- actual_days: 实际天数（审核时计算：审核日期 - 最早录像日期）
+- reminder_date: 提醒日期（最早录像日期 + 要求天数）
+- status: 状态（pending-待处理, notified-已通知, completed-已完成）
+- created_at: 创建时间
+- notified_at: 通知时间
+- completed_at: 完成时间（标记为已处理的时间）
+- completed_by: 处理人
+
+索引：
+- idx_reminder_date: 提醒日期索引（用于定时任务查询）
+- idx_status: 状态索引（用于查询不同状态的任务）
+- idx_task_id: 任务ID索引（用于关联查询）
+
+三、执行步骤
+-----------
+1. 执行 create-audit-video-reminders-table.sql 创建表
+
+四、功能说明
+-----------
+1. 在保存审核意见时，系统会自动解析审核意见，识别录像天数不足的情况
+2. 如果识别到录像天数不足，会自动创建提醒任务
+3. 定时任务每天扫描到期的提醒任务，更新状态为"已通知"
+4. 用户可以在提醒列表页面查看和管理提醒任务
+

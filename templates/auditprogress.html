@@ -709,6 +709,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 从 Go 模板中获取传递的参数
     var msg = '{{.ImportMessage}}';
     var count = {{.ImportCount}};
+    var highlightTaskID = {{.HighlightTaskID}};
 
     if (msg === 'ImportSuccess' && count > 0) {
         alert('导入成功！共导入 ' + count + ' 条数据。');
@@ -730,6 +731,22 @@ document.addEventListener('DOMContentLoaded', function() {
             var url = new URL(window.location.href);
             url.searchParams.delete('message');
             window.history.replaceState({path:url.href}, '', url.href);
+        }
+    }
+
+    // 如果URL中有task_id参数，自动滚动到对应的任务行并高亮
+    if (highlightTaskID > 0) {
+        var taskRow = document.getElementById('task-' + highlightTaskID);
+        if (taskRow) {
+            // 延迟一下，确保页面已完全渲染
+            setTimeout(function() {
+                taskRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // 3秒后移除高亮背景色
+                setTimeout(function() {
+                    taskRow.style.backgroundColor = '';
+                    taskRow.style.borderLeft = '';
+                }, 3000);
+            }, 100);
         }
     }
     
@@ -840,6 +857,7 @@ function confirmDelete(taskId, fileName) {
         <a href="/checkpoint/filelist" class="submenu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}">卡口建档明细</a>
         <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
         <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">设备审核进度</a>
+        <a href="/audit/progress/video-reminders" class="submenu-item {{if eq .SubMenu "video_reminders"}}active{{end}}">录像天数不足提醒</a>
         <a href="/checkpoint/progress" class="submenu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}">卡口审核进度</a>
         <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
         <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
@@ -922,13 +940,18 @@ function confirmDelete(taskId, fileName) {
         <tbody>
             {{if .List}}
                 {{range $index, $task := .List}}
-                <tr>
+                <tr id="task-{{$task.ID}}" {{if eq $.HighlightTaskID $task.ID}}style="background-color: #fff3cd; border-left: 4px solid #ffc107;"{{end}}>
                     <td>{{$task.ID}}</td>
                     <td>{{$task.FileName}}</td>
                     <td>
                         <span class="{{if eq $task.AuditStatus "未审核"}}status-pending{{else if eq $task.AuditStatus "已审核待整改"}}status-reviewing{{else if eq $task.AuditStatus "已完成"}}status-completed{{end}}">
                             {{$task.AuditStatus}}
                         </span>
+                        {{if gt $task.ReminderCount 0}}
+                        <span style="display: inline-block; margin-left: 8px; padding: 2px 8px; background-color: #e74c3c; color: white; border-radius: 10px; font-size: 11px; font-weight: 600;" title="有{{$task.ReminderCount}}个录像提醒">
+                            ⚠️ {{$task.ReminderCount}}
+                        </span>
+                        {{end}}
                         {{if $task.ArchiveType.Valid}}
                             {{if eq $task.ArchiveType.String "新增"}}
                             <span class="archive-type-badge archive-type-new">新</span>

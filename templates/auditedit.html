@@ -332,6 +332,20 @@
             <div class="form-group">
                 <label for="audit_comment">审核意见</label>
                 <textarea id="audit_comment" name="audit_comment" placeholder="请输入审核意见...">{{if .Task.AuditComment.Valid}}{{.Task.AuditComment.String}}{{end}}</textarea>
+                <div style="margin-top: 8px; padding: 10px; background-color: #e8f4f8; border-left: 4px solid #3498db; border-radius: 4px; font-size: 13px; color: #555;">
+                    <strong>💡 提示：</strong>如果审核意见涉及录像天数不足，请按以下格式填写，系统将自动识别并创建提醒任务：<br>
+                    <div style="margin-top: 8px; padding-left: 10px;">
+                        • 录像最早日期：2025-12-01，不足30天<br>
+                        • 录像最早日期：2025-11-15，不足90天<br>
+                        • 录像最早日期：2025-10-01，不足180天<br>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 12px; color: #7f8c8d;">
+                        支持的格式：<br>
+                        - "录像最早日期：YYYY-MM-DD" 或 "录像最早日期：YYYY/MM/DD"<br>
+                        - "不足30天" 或 "不足90天" 或 "不足180天"<br>
+                        - 日期格式支持：2025-12-01、2025/12/01、2025-12-1、2025/12/1
+                    </div>
+                </div>
             </div>
             
             <div class="btn-group">

@@ -103,6 +103,9 @@ func main() {
     http.HandleFunc("/audit/progress/download-template", auth.RequireAuth(auditprogress.DownloadTemplateHandler))
     http.HandleFunc("/audit/progress/upload", auth.RequireAuth(auditprogress.UploadHandler))
     http.HandleFunc("/audit/progress/download", auth.RequireAuth(auditprogress.DownloadHandler))
+    http.HandleFunc("/audit/progress/video-reminders", auth.RequireAuth(auditprogress.VideoReminderHandler))
+    http.HandleFunc("/audit/progress/video-reminders/complete", auth.RequireAuth(auditprogress.CompleteReminderHandler))
+    http.HandleFunc("/audit/progress/video-reminders/schedule", auth.RequireAuth(auditprogress.ScheduleConfigHandler))
     http.HandleFunc("/audit/statistics", auth.RequireAuth(auditstatistics.Handler))
     http.HandleFunc("/audit/statistics/export", auth.RequireAuth(auditstatistics.ExportHandler))
     http.HandleFunc("/audit", auth.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
@@ -140,6 +143,9 @@ func main() {
 
     // 2.1. 初始化定时任务调度器
     taskconfig.InitScheduler()
+    
+    // 2.2. 启动录像提醒定时任务
+    auditprogress.StartVideoReminderScheduler()
 
     // 3. 启动服务
     serverAddr := ":" + db.AppConfig.ServerPort
