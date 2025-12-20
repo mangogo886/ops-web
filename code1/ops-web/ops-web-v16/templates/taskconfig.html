@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}} - 档案审核管理</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: "Microsoft YaHei", sans-serif; 
+            display: flex; 
+            height: 100vh; 
+        }
+        
+        /* 左侧导航 */
+        .sidebar { 
+            width: 180px; 
+            background-color: #2c3e50; 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .sidebar h3 { 
+            text-align: center; 
+            padding: 20px 0; 
+            border-bottom: 1px solid #34495e; 
+            margin: 0; 
+        }
+        .menu-item { 
+            padding: 15px 20px; 
+            color: #ecf0f1; 
+            text-decoration: none; 
+            display: block; 
+            border-bottom: 1px solid #34495e; 
+        }
+        .menu-item:hover { 
+            background-color: #34495e; 
+        }
+        .menu-item.active { 
+            background-color: #3498db; 
+        }
+        
+        /* 子菜单样式 */
+        .submenu-item {
+            padding: 12px 20px 12px 40px;
+            color: #bdc3c7;
+            text-decoration: none;
+            display: block;
+            border-bottom: 1px solid #34495e;
+            font-size: 14px;
+        }
+        .submenu-item:hover {
+            background-color: #34495e;
+        }
+        .submenu-item.active {
+            background-color: #2980b9;
+            color: white;
+        }
+
+        /* 右侧内容 */
+        .content { 
+            flex: 1; 
+            padding: 20px; 
+            overflow-y: auto; 
+            background-color: #f5f6fa; 
+        }
+        
+        /* 页面标题 */
+        .page-header {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .page-header h2 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 24px;
+        }
+
+        /* 消息提示 */
+        .message {
+            padding: 12px 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* 表单容器 */
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .form-group .help-text {
+            margin-top: 5px;
+            color: #7f8c8d;
+            font-size: 12px;
+        }
+        .form-actions {
+            margin-top: 30px;
+            text-align: right;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h3>档案审核管理</h3>
+        <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
+        <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
+        <a href="/checkpoint/filelist" class="submenu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}">卡口建档明细</a>
+        <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
+        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">设备审核进度</a>
+        <a href="/audit/progress/video-reminders" class="submenu-item {{if eq .SubMenu "video_reminders"}}active{{end}}">录像天数不足提醒</a>
+        <a href="/checkpoint/progress" class="submenu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}">卡口审核进度</a>
+        <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
+        <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
+        <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/permission" class="submenu-item {{if eq .SubMenu "permission"}}active{{end}}">权限设置</a>
+        <a href="/taskconfig" class="submenu-item {{if eq .SubMenu "task_config"}}active{{end}}">任务配置</a>
+        <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
+    </div>
+
+    <div class="content">
+        
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <h2>{{.Title}}</h2>
+        </div>
+
+        <!-- 消息提示 -->
+        {{if .Message}}
+        <div class="message {{.MessageType}}">
+            {{.Message}}
+        </div>
+        {{end}}
+
+        <!-- 任务配置表单 -->
+        <div class="form-container">
+            <form action="/taskconfig/save" method="POST">
+                <div class="form-group">
+                    <label for="upload_file_path">文件上传路径：</label>
+                    <input type="text" id="upload_file_path" name="upload_file_path" value="{{.UploadFilePath}}" placeholder="例如：D:\uploads 或 /var/uploads">
+                    <div class="help-text">请输入用于存储上传文件的目录路径（绝对路径）</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="backup_file_path">备份路径：</label>
+                    <input type="text" id="backup_file_path" name="backup_file_path" value="{{.BackupFilePath}}" placeholder="例如：D:\backups 或 /var/backups">
+                    <div class="help-text">请输入用于存储备份文件的目录路径（绝对路径）</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="database_backup_path">数据库备份路径：</label>
+                    <input type="text" id="database_backup_path" name="database_backup_path" value="{{.DatabaseBackupPath}}" placeholder="例如：D:\db_backups 或 /var/db_backups">
+                    <div class="help-text">请输入用于存储数据库备份文件的目录路径（绝对路径）</div>
+                </div>
+
+                <!-- 定时任务配置 -->
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+                    <h3 style="margin-bottom: 20px; color: #2c3e50;">定时任务配置</h3>
+                    
+                    <!-- 数据库备份定时任务 -->
+                    <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+                        <h4 style="margin: 0 0 15px 0; color: #34495e; font-size: 16px;">数据库备份定时任务</h4>
+                        <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="db_backup_enabled" value="1" {{if eq .DBBackupEnabled "1"}}checked{{end}}>
+                                <span>启用定时备份</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <span>频率：</span>
+                                <select name="db_backup_frequency" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <option value="daily" {{if eq .DBBackupFrequency "daily"}}selected{{end}}>每天</option>
+                                    <option value="weekly" {{if eq .DBBackupFrequency "weekly"}}selected{{end}}>每周</option>
+                                </select>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <span>时间：</span>
+                                <select name="db_backup_hour" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <option value="1" {{if eq .DBBackupHour "1"}}selected{{end}}>1时</option>
+                                    <option value="2" {{if eq .DBBackupHour "2"}}selected{{end}}>2时</option>
+                                    <option value="3" {{if eq .DBBackupHour "3"}}selected{{end}}>3时</option>
+                                    <option value="4" {{if eq .DBBackupHour "4"}}selected{{end}}>4时</option>
+                                    <option value="5" {{if eq .DBBackupHour "5"}}selected{{end}}>5时</option>
+                                    <option value="6" {{if eq .DBBackupHour "6"}}selected{{end}}>6时</option>
+                                    <option value="7" {{if eq .DBBackupHour "7"}}selected{{end}}>7时</option>
+                                    <option value="8" {{if eq .DBBackupHour "8"}}selected{{end}}>8时</option>
+                                    <option value="9" {{if eq .DBBackupHour "9"}}selected{{end}}>9时</option>
+                                    <option value="10" {{if eq .DBBackupHour "10"}}selected{{end}}>10时</option>
+                                    <option value="11" {{if eq .DBBackupHour "11"}}selected{{end}}>11时</option>
+                                    <option value="12" {{if eq .DBBackupHour "12"}}selected{{end}}>12时</option>
+                                    <option value="13" {{if eq .DBBackupHour "13"}}selected{{end}}>13时</option>
+                                    <option value="14" {{if eq .DBBackupHour "14"}}selected{{end}}>14时</option>
+                                    <option value="15" {{if eq .DBBackupHour "15"}}selected{{end}}>15时</option>
+                                    <option value="16" {{if eq .DBBackupHour "16"}}selected{{end}}>16时</option>
+                                    <option value="17" {{if eq .DBBackupHour "17"}}selected{{end}}>17时</option>
+                                    <option value="18" {{if eq .DBBackupHour "18"}}selected{{end}}>18时</option>
+                                    <option value="19" {{if eq .DBBackupHour "19"}}selected{{end}}>19时</option>
+                                    <option value="20" {{if eq .DBBackupHour "20"}}selected{{end}}>20时</option>
+                                    <option value="21" {{if eq .DBBackupHour "21"}}selected{{end}}>21时</option>
+                                    <option value="22" {{if eq .DBBackupHour "22"}}selected{{end}}>22时</option>
+                                    <option value="23" {{if eq .DBBackupHour "23"}}selected{{end}}>23时</option>
+                                    <option value="24" {{if eq .DBBackupHour "24"}}selected{{end}}>24时</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 文件备份定时任务 -->
+                    <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+                        <h4 style="margin: 0 0 15px 0; color: #34495e; font-size: 16px;">文件备份定时任务</h4>
+                        <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="file_backup_enabled" value="1" {{if eq .FileBackupEnabled "1"}}checked{{end}}>
+                                <span>启用定时备份</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <span>频率：</span>
+                                <select name="file_backup_frequency" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <option value="daily" {{if eq .FileBackupFrequency "daily"}}selected{{end}}>每天</option>
+                                    <option value="weekly" {{if eq .FileBackupFrequency "weekly"}}selected{{end}}>每周</option>
+                                </select>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <span>时间：</span>
+                                <select name="file_backup_hour" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <option value="1" {{if eq .FileBackupHour "1"}}selected{{end}}>1时</option>
+                                    <option value="2" {{if eq .FileBackupHour "2"}}selected{{end}}>2时</option>
+                                    <option value="3" {{if eq .FileBackupHour "3"}}selected{{end}}>3时</option>
+                                    <option value="4" {{if eq .FileBackupHour "4"}}selected{{end}}>4时</option>
+                                    <option value="5" {{if eq .FileBackupHour "5"}}selected{{end}}>5时</option>
+                                    <option value="6" {{if eq .FileBackupHour "6"}}selected{{end}}>6时</option>
+                                    <option value="7" {{if eq .FileBackupHour "7"}}selected{{end}}>7时</option>
+                                    <option value="8" {{if eq .FileBackupHour "8"}}selected{{end}}>8时</option>
+                                    <option value="9" {{if eq .FileBackupHour "9"}}selected{{end}}>9时</option>
+                                    <option value="10" {{if eq .FileBackupHour "10"}}selected{{end}}>10时</option>
+                                    <option value="11" {{if eq .FileBackupHour "11"}}selected{{end}}>11时</option>
+                                    <option value="12" {{if eq .FileBackupHour "12"}}selected{{end}}>12时</option>
+                                    <option value="13" {{if eq .FileBackupHour "13"}}selected{{end}}>13时</option>
+                                    <option value="14" {{if eq .FileBackupHour "14"}}selected{{end}}>14时</option>
+                                    <option value="15" {{if eq .FileBackupHour "15"}}selected{{end}}>15时</option>
+                                    <option value="16" {{if eq .FileBackupHour "16"}}selected{{end}}>16时</option>
+                                    <option value="17" {{if eq .FileBackupHour "17"}}selected{{end}}>17时</option>
+                                    <option value="18" {{if eq .FileBackupHour "18"}}selected{{end}}>18时</option>
+                                    <option value="19" {{if eq .FileBackupHour "19"}}selected{{end}}>19时</option>
+                                    <option value="20" {{if eq .FileBackupHour "20"}}selected{{end}}>20时</option>
+                                    <option value="21" {{if eq .FileBackupHour "21"}}selected{{end}}>21时</option>
+                                    <option value="22" {{if eq .FileBackupHour "22"}}selected{{end}}>22时</option>
+                                    <option value="23" {{if eq .FileBackupHour "23"}}selected{{end}}>23时</option>
+                                    <option value="24" {{if eq .FileBackupHour "24"}}selected{{end}}>24时</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">保存设置</button>
+                    <button type="button" class="btn btn-primary" onclick="backupDatabase()" style="margin-left: 10px; background-color: #27ae60;">数据库备份</button>
+                    <button type="button" class="btn btn-primary" onclick="backupFiles()" style="margin-left: 10px; background-color: #9b59b6;">文件备份</button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+<script>
+function backupDatabase() {
+    if (confirm('确定要执行数据库备份吗？\n\n备份将导出所有表的数据到SQL文件，存放在数据库备份路径下的当天日期目录中。')) {
+        // 创建表单提交备份请求
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/taskconfig/backup-database';
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function backupFiles() {
+    if (confirm('确定要执行文件备份吗？\n\n备份将复制文件上传路径下的所有文件到备份路径，同文件直接覆盖。')) {
+        // 创建表单提交备份请求
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/taskconfig/backup-files';
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+
+</body>
+</html>
+
