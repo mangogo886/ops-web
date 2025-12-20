@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}} - 档案审核管理</title>
+    <style>
+    body { 
+        margin: 0; 
+        padding: 0; 
+        font-family: "Microsoft YaHei", sans-serif; 
+        display: flex; 
+        height: 100vh; 
+    }
+    
+    .sidebar { 
+        width: 180px; 
+        background-color: #2c3e50; 
+        color: white; 
+        display: flex; 
+        flex-direction: column; 
+    }
+    .sidebar h3 { 
+        text-align: center; 
+        padding: 20px 0; 
+        border-bottom: 1px solid #34495e; 
+        margin: 0; 
+    }
+    .menu-item { 
+        padding: 15px 20px; 
+        color: #ecf0f1; 
+        text-decoration: none; 
+        display: block; 
+        border-bottom: 1px solid #34495e; 
+    }
+    .menu-item:hover { 
+        background-color: #34495e; 
+    }
+    .menu-item.active { 
+        background-color: #3498db; 
+    }
+    .submenu-item {
+        padding: 12px 20px 12px 40px;
+        font-size: 14px;
+        color: #bdc3c7;
+        text-decoration: none;
+        display: block;
+        border-bottom: 1px solid #34495e;
+    }
+    .submenu-item:hover {
+        background-color: #34495e;
+    }
+    .submenu-item.active {
+        background-color: #2980b9;
+        color: white;
+    }
+    
+    .content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+    }
+    
+    h1 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+    }
+
+    .search-container { 
+        background: white; 
+        padding: 20px; 
+        border-radius: 5px; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+        margin-bottom: 20px; 
+    }
+    .search-form { 
+        display: flex; 
+        align-items: center; 
+        gap: 10px;
+    }
+    .search-form select, .search-form button { 
+        padding: 8px 15px; 
+        border-radius: 4px; 
+        border: 1px solid #ddd;
+    }
+    .search-form button { 
+        background-color: #3498db; 
+        color: white; 
+        border: none; 
+        cursor: pointer; 
+    }
+    .search-form button:hover { 
+        background-color: #2980b9; 
+    }
+    .back-btn {
+        display: inline-block;
+        padding: 8px 15px;
+        background-color: #95a5a6;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .back-btn:hover {
+        background-color: #7f8c8d;
+    }
+
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        background: white; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+    }
+    th, td { 
+        padding: 12px 15px; 
+        text-align: left; 
+        border-bottom: 1px solid #eee; 
+        font-size: 14px; 
+    }
+    th { 
+        background-color: #f8f9fa; 
+        font-weight: 600; 
+        color: #2c3e50;
+    }
+    tr:hover { 
+        background-color: #f1f1f1; 
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .status-pending {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    .status-notified {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .status-completed {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .remaining-days {
+        font-weight: 600;
+    }
+    .remaining-days.negative {
+        color: #e74c3c;
+    }
+    .remaining-days.positive {
+        color: #27ae60;
+    }
+
+    .btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-primary {
+        background-color: #3498db;
+        color: white;
+    }
+    .btn-primary:hover {
+        background-color: #2980b9;
+    }
+    .btn-success {
+        background-color: #27ae60;
+        color: white;
+    }
+    .btn-success:hover {
+        background-color: #229954;
+    }
+    .btn-danger {
+        background-color: #e74c3c;
+        color: white;
+    }
+    .btn-danger:hover {
+        background-color: #c0392b;
+    }
+    .btn-danger:disabled {
+        background-color: #95a5a6;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .pagination {
+        margin-top: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+    .page-btn {
+        padding: 8px 12px;
+        background: white;
+        text-decoration: none;
+        color: #333;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+    }
+    .page-btn:hover {
+        background-color: #f8f9fa;
+    }
+    .page-btn.disabled {
+        color: #999;
+        cursor: not-allowed;
+    }
+    .page-info {
+        margin: 0 15px;
+        color: #666;
+    }
+    </style>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var msg = '{{.Query}}';
+        if (msg.includes('CompleteSuccess')) {
+            alert('标记为已处理成功！');
+        }
+        if (msg.includes('DeleteSuccess')) {
+            alert('删除成功！');
+        }
+        
+        // 监听复选框变化，更新批量删除按钮状态
+        var checkboxes = document.querySelectorAll('input[type="checkbox"][name="reminder_id"]');
+        var batchDeleteBtn = document.getElementById('batchDeleteBtn');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                var checkedCount = document.querySelectorAll('input[type="checkbox"][name="reminder_id"]:checked').length;
+                batchDeleteBtn.disabled = checkedCount === 0;
+            });
+        });
+    });
+
+    function confirmComplete(reminderId, fileName) {
+        if (confirm('确定要将档案"' + fileName + '"的提醒标记为已处理吗？')) {
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/audit/progress/video-reminders/complete';
+            
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'reminder_id';
+            input.value = reminderId;
+            form.appendChild(input);
+            
+            var statusInput = document.createElement('input');
+            statusInput.type = 'hidden';
+            statusInput.name = 'status';
+            statusInput.value = '{{.Status}}';
+            form.appendChild(statusInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    function batchDelete() {
+        var checkedBoxes = document.querySelectorAll('input[type="checkbox"][name="reminder_id"]:checked');
+        if (checkedBoxes.length === 0) {
+            alert('请选择要删除的记录！');
+            return;
+        }
+        
+        var count = checkedBoxes.length;
+        var confirmMsg = count === 1 ? '确定要删除这条记录吗？' : '确定要删除选中的 ' + count + ' 条记录吗？';
+        
+        if (confirm(confirmMsg)) {
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/audit/progress/video-reminders/delete';
+            
+            checkedBoxes.forEach(function(checkbox) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'reminder_id';
+                input.value = checkbox.value;
+                form.appendChild(input);
+            });
+            
+            var statusInput = document.createElement('input');
+            statusInput.type = 'hidden';
+            statusInput.name = 'status';
+            statusInput.value = '{{.Status}}';
+            form.appendChild(statusInput);
+            
+            var pageInput = document.createElement('input');
+            pageInput.type = 'hidden';
+            pageInput.name = 'page';
+            pageInput.value = '{{.CurrentPage}}';
+            form.appendChild(pageInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    function deleteSingle(reminderId, fileName) {
+        if (confirm('确定要删除档案"' + fileName + '"的提醒记录吗？')) {
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/audit/progress/video-reminders/delete';
+            
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'reminder_id';
+            input.value = reminderId;
+            form.appendChild(input);
+            
+            var statusInput = document.createElement('input');
+            statusInput.type = 'hidden';
+            statusInput.name = 'status';
+            statusInput.value = '{{.Status}}';
+            form.appendChild(statusInput);
+            
+            var pageInput = document.createElement('input');
+            pageInput.type = 'hidden';
+            pageInput.name = 'page';
+            pageInput.value = '{{.CurrentPage}}';
+            form.appendChild(pageInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    function toggleAll(source) {
+        var checkboxes = document.querySelectorAll('input[type="checkbox"][name="reminder_id"]');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.checked = source.checked;
+        });
+        
+        var batchDeleteBtn = document.getElementById('batchDeleteBtn');
+        batchDeleteBtn.disabled = !source.checked;
+    }
+    </script>
+</head>
+<body>
+    <div class="sidebar">
+        <h3>档案审核管理</h3>
+        <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
+        <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
+        <a href="/checkpoint/filelist" class="submenu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}">卡口建档明细</a>
+        <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
+        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">设备审核进度</a>
+        <a href="/audit/progress/video-reminders" class="submenu-item active">录像天数不足提醒</a>
+        <a href="/checkpoint/progress" class="submenu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}">卡口审核进度</a>
+        <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
+        <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
+        <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/permission" class="submenu-item {{if eq .SubMenu "permission"}}active{{end}}">权限设置</a>
+        <a href="/taskconfig" class="submenu-item {{if eq .SubMenu "task_config"}}active{{end}}">任务配置</a>
+        <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
+    </div>
+
+    <div class="content">
+        <a href="/audit/progress" class="back-btn">← 返回设备审核进度</a>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1 style="margin: 0;">录像天数不足提醒</h1>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" onclick="batchDelete()" class="btn btn-danger" id="batchDeleteBtn" disabled style="text-decoration: none; border: none; cursor: pointer;">🗑️ 批量删除</button>
+                <a href="/audit/progress/video-reminders/schedule" class="btn btn-primary" style="text-decoration: none;">⚙️ 定时任务设置</a>
+            </div>
+        </div>
+        
+        <div class="search-container">
+            <form class="search-form" action="/audit/progress/video-reminders" method="GET">
+                <label style="font-weight: 600; color: #2c3e50;">状态筛选:</label>
+                <select name="status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">全部</option>
+                    <option value="pending" {{if eq .Status "pending"}}selected{{end}}>待处理</option>
+                    <option value="notified" {{if eq .Status "notified"}}selected{{end}}>已通知</option>
+                    <option value="completed" {{if eq .Status "completed"}}selected{{end}}>已完成</option>
+                </select>
+                <button type="submit">查询</button>
+                {{if .Status}}
+                <a href="/audit/progress/video-reminders" style="padding: 8px 15px; background-color: #95a5a6; color: white; text-decoration: none; border-radius: 4px;">清除</a>
+                {{end}}
+            </form>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th><input type="checkbox" onclick="toggleAll(this)" title="全选/取消全选"></th>
+                    <th>序号</th>
+                    <th>档案名称</th>
+                    <th>机构名称</th>
+                    <th>最早录像日期</th>
+                    <th>要求天数</th>
+                    <th>实际天数</th>
+                    <th>到期日期</th>
+                    <th>剩余天数</th>
+                    <th>状态</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{if .List}}
+                    {{range $index, $item := .List}}
+                    <tr>
+                        <td><input type="checkbox" name="reminder_id" value="{{$item.ID}}"></td>
+                        <td>{{$item.ID}}</td>
+                        <td><a href="/audit/progress?task_id={{$item.TaskID}}" style="color: #3498db; text-decoration: none; font-weight: 500;">{{$item.FileName}}</a></td>
+                        <td>{{$item.Organization}}</td>
+                        <td>{{$item.EarliestVideoDate.Format "2006-01-02"}}</td>
+                        <td>{{$item.RequiredDays}}天</td>
+                        <td>{{$item.ActualDays}}天</td>
+                        <td>{{$item.ReminderDate.Format "2006-01-02"}}</td>
+                        <td>
+                            <span class="remaining-days {{if lt $item.RemainingDays 0}}negative{{else}}positive{{end}}">
+                                {{if lt $item.RemainingDays 0}}已过期 {{$item.RemainingDays}}天{{else}}{{$item.RemainingDays}}天{{end}}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="status-badge status-{{$item.Status}}">{{$item.StatusText}}</span>
+                        </td>
+                        <td>{{$item.CreatedAt.Format "2006-01-02 15:04"}}</td>
+                        <td>
+                            {{if ne $item.Status "completed"}}
+                            <a href="#" onclick="confirmComplete({{$item.ID}}, '{{$item.FileName}}'); return false;" class="btn btn-success">标记为已处理</a>
+                            {{else}}
+                            <span style="color: #999;">已处理</span>
+                            {{if $item.CompletedBy.Valid}}
+                            <br><span style="font-size: 12px; color: #999;">处理人：{{$item.CompletedBy.String}}</span>
+                            {{end}}
+                            {{end}}
+                            <br>
+                            <a href="#" onclick="deleteSingle({{$item.ID}}, '{{$item.FileName}}'); return false;" class="btn btn-danger" style="margin-top: 5px; font-size: 12px; padding: 4px 8px;">删除</a>
+                        </td>
+                    </tr>
+                    {{end}}
+                {{else}}
+                    <tr>
+                        <td colspan="12" style="text-align: center; color: #999; padding: 40px;">暂无提醒任务</td>
+                    </tr>
+                {{end}}
+            </tbody>
+        </table>
+
+        {{if gt .TotalPages 1}}
+        <div class="pagination">
+            {{if .HasPrev}}
+            <a href="/audit/progress/video-reminders?page={{.PrevPage}}{{if .Status}}&status={{.Status}}{{end}}" class="page-btn">上一页</a>
+            {{else}}
+            <span class="page-btn disabled">上一页</span>
+            {{end}}
+            
+            <span class="page-info">第 {{.CurrentPage}} / {{.TotalPages}} 页，共 {{.TotalCount}} 条记录</span>
+            
+            {{if .HasNext}}
+            <a href="/audit/progress/video-reminders?page={{.NextPage}}{{if .Status}}&status={{.Status}}{{end}}" class="page-btn">下一页</a>
+            {{else}}
+            <span class="page-btn disabled">下一页</span>
+            {{end}}
+        </div>
+        {{end}}
+    </div>
+</body>
+</html>
+
