@@ -105,6 +105,7 @@ func main() {
     http.HandleFunc("/audit/progress/download", auth.RequireAuth(auditprogress.DownloadHandler))
     http.HandleFunc("/audit/progress/video-reminders", auth.RequireAuth(auditprogress.VideoReminderHandler))
     http.HandleFunc("/audit/progress/video-reminders/complete", auth.RequireAuth(auditprogress.CompleteReminderHandler))
+    http.HandleFunc("/audit/progress/video-reminders/delete", auth.RequireAuth(auditprogress.DeleteReminderHandler))
     http.HandleFunc("/audit/progress/video-reminders/schedule", auth.RequireAuth(auditprogress.ScheduleConfigHandler))
     http.HandleFunc("/audit/statistics", auth.RequireAuth(auditstatistics.Handler))
     http.HandleFunc("/audit/statistics/export", auth.RequireAuth(auditstatistics.ExportHandler))

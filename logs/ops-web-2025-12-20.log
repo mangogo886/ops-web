@@ -7,3 +7,29 @@
 2025/12/20 08:17:21 logger.go:43: [ERROR] 设备审核录像提醒定时任务已启动，将根据配置执行
 2025/12/20 08:17:21 logger.go:43: [ERROR] 定时任务已配置：每天 1:00，下次执行时间：2025-12-21 01:00:00，等待 16h42m38.4620461s
 2025/12/20 08:18:05 logger.go:43: [ERROR] 创建录像提醒任务成功: taskID=35, earliestDate=2025-12-01, requiredDays=30, reminderDate=2025-12-31
+2025/12/20 08:59:56 logger.go:43: [ERROR] 设备审核录像提醒定时任务已启动，将根据配置执行
+2025/12/20 08:59:56 logger.go:43: [ERROR] 定时任务已配置：每天 1:00，下次执行时间：2025-12-21 01:00:00，等待 16h0m3.2249077s
+2025/12/20 09:06:15 logger.go:43: [ERROR] 创建录像提醒任务成功: taskID=35, earliestDate=2025-12-01, requiredDays=30, reminderDate=2025-12-31
+2025/12/20 09:06:55 logger.go:43: [ERROR] 标记提醒任务为已完成成功: reminderID=2, username=admin
+2025/12/20 09:08:01 logger.go:43: [ERROR] 创建录像提醒任务成功: taskID=35, earliestDate=2025-10-01, requiredDays=180, reminderDate=2026-03-30
+2025/12/20 09:08:11 logger.go:43: [ERROR] 标记提醒任务为已完成成功: reminderID=3, username=admin
+2025/12/20 09:11:35 logger.go:43: [ERROR] 设备审核录像提醒定时任务已启动，将根据配置执行
+2025/12/20 09:11:35 logger.go:43: [ERROR] 定时任务已配置：每天 10:00，下次执行时间：2025-12-20 10:00:00，等待 48m24.78913s
+2025/12/20 09:12:14 logger.go:43: [ERROR] 成功解析录像天数不足信息: dateStr=2025-10-01, daysStr=180, parsedDate=2025-10-01, days=180
+2025/12/20 09:12:14 logger.go:43: [ERROR] 解析到录像天数不足信息: taskID=35, earliestDate=2025-10-01, requiredDays=180
+2025/12/20 09:12:14 logger.go:43: [ERROR] 创建录像提醒任务成功: taskID=35, earliestDate=2025-10-01, requiredDays=180, reminderDate=2026-03-30
+2025/12/20 09:12:17 logger.go:43: [ERROR] 解析最早录像日期失败: 2025-10-01T00:00:00+08:00, 错误: parsing time "2025-10-01T00:00:00+08:00" as "2006/01/02 15:04:05": cannot parse "-10-01T00:00:00+08:00" as "/"
+2025/12/20 09:12:17 logger.go:43: [ERROR] 解析提醒日期失败: 2026-03-30T00:00:00+08:00, 错误: parsing time "2026-03-30T00:00:00+08:00" as "2006/01/02 15:04:05": cannot parse "-03-30T00:00:00+08:00" as "/"
+2025/12/20 09:12:17 logger.go:43: [ERROR] 解析创建时间失败: 2025-12-20T09:12:14+08:00, 错误: parsing time "2025-12-20T09:12:14+08:00": extra text: "T09:12:14+08:00"
+2025/12/20 09:12:20 logger.go:43: [ERROR] 标记提醒任务为已完成成功: reminderID=4, username=admin
+2025/12/20 09:12:20 logger.go:43: [ERROR] 解析最早录像日期失败: 2025-10-01T00:00:00+08:00, 错误: parsing time "2025-10-01T00:00:00+08:00" as "2006/01/02 15:04:05": cannot parse "-10-01T00:00:00+08:00" as "/"
+2025/12/20 09:12:20 logger.go:43: [ERROR] 解析提醒日期失败: 2026-03-30T00:00:00+08:00, 错误: parsing time "2026-03-30T00:00:00+08:00" as "2006/01/02 15:04:05": cannot parse "-03-30T00:00:00+08:00" as "/"
+2025/12/20 09:12:20 logger.go:43: [ERROR] 解析创建时间失败: 2025-12-20T09:12:14+08:00, 错误: parsing time "2025-12-20T09:12:14+08:00": extra text: "T09:12:14+08:00"
+2025/12/20 09:14:38 logger.go:43: [ERROR] 设备审核录像提醒定时任务已启动，将根据配置执行
+2025/12/20 09:14:38 logger.go:43: [ERROR] 定时任务已配置：每天 10:00，下次执行时间：2025-12-20 10:00:00，等待 45m21.7592009s
+2025/12/20 09:15:42 logger.go:43: [ERROR] 成功解析录像天数不足信息: dateStr=2025-12-01, daysStr=30, parsedDate=2025-12-01, days=30
+2025/12/20 09:15:42 logger.go:43: [ERROR] 解析到录像天数不足信息: taskID=35, earliestDate=2025-12-01, requiredDays=30
+2025/12/20 09:15:42 logger.go:43: [ERROR] 创建录像提醒任务成功: taskID=35, earliestDate=2025-12-01, requiredDays=30, reminderDate=2025-12-31
+2025/12/20 09:15:57 logger.go:43: [ERROR] 标记提醒任务为已完成成功: reminderID=5, username=admin
+2025/12/20 09:20:14 logger.go:43: [ERROR] 设备审核录像提醒定时任务已启动，将根据配置执行
+2025/12/20 09:20:14 logger.go:43: [ERROR] 定时任务已配置：每天 10:00，下次执行时间：2025-12-20 10:00:00，等待 39m45.0540679s

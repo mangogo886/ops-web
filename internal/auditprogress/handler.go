@@ -816,12 +816,19 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		if auditComment != "" {
 			earliestDate, requiredDays, found := ParseVideoDaysIssue(auditComment)
 			if found {
+				logger.Errorf("解析到录像天数不足信息: taskID=%d, earliestDate=%s, requiredDays=%d", 
+					taskID, earliestDate.Format("2006-01-02"), requiredDays)
 				// 获取当前时间作为审核日期
 				auditDate := time.Now()
 				err = CreateVideoReminder(tx, taskID, earliestDate, requiredDays, auditDate)
 				if err != nil {
 					// 记录错误但不阻断流程
 					logger.Errorf("创建录像提醒任务失败: %v, taskID: %d", err, taskID)
+				}
+			} else {
+				// 如果审核意见包含相关关键词但未解析成功，记录日志用于调试
+				if strings.Contains(auditComment, "录像") && strings.Contains(auditComment, "不足") {
+					logger.Errorf("审核意见包含录像相关关键词但解析失败: taskID=%d, comment=%s", taskID, auditComment)
 				}
 			}
 		}
@@ -2142,10 +2149,91 @@ func CompleteReminderHandler(w http.ResponseWriter, r *http.Request) {
 	// 重定向回提醒列表
 	status := r.FormValue("status")
 	redirectURL := "/audit/progress/video-reminders"
+	params := []string{}
 	if status != "" {
-		redirectURL += "?status=" + status
+		params = append(params, "status="+status)
 	}
-	http.Redirect(w, r, redirectURL+"&message=CompleteSuccess", http.StatusSeeOther)
+	params = append(params, "message=CompleteSuccess")
+	if len(params) > 0 {
+		redirectURL += "?" + strings.Join(params, "&")
+	}
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+// DeleteReminderHandler: 删除录像提醒任务（支持单条和批量删除）
+func DeleteReminderHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "方法不允许", http.StatusMethodNotAllowed)
+		return
+	}
+
+	currentUser := auth.GetCurrentUser(r)
+	if currentUser == nil {
+		http.Error(w, "未登录", http.StatusUnauthorized)
+		return
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "表单解析失败", http.StatusBadRequest)
+		return
+	}
+
+	// 获取要删除的提醒ID列表
+	reminderIDsStr := r.Form["reminder_id"]
+	if len(reminderIDsStr) == 0 {
+		http.Error(w, "请选择要删除的记录", http.StatusBadRequest)
+		return
+	}
+
+	// 转换为整数切片
+	var reminderIDs []int
+	for _, idStr := range reminderIDsStr {
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id <= 0 {
+			continue
+		}
+		reminderIDs = append(reminderIDs, id)
+	}
+
+	if len(reminderIDs) == 0 {
+		http.Error(w, "无效的提醒ID", http.StatusBadRequest)
+		return
+	}
+
+	// 执行删除
+	err = DeleteVideoReminders(reminderIDs)
+	if err != nil {
+		logger.Errorf("删除录像提醒任务失败: %v, IDs: %v", err, reminderIDs)
+		http.Error(w, "删除失败: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 记录操作日志
+	if len(reminderIDs) == 1 {
+		action := fmt.Sprintf("删除录像提醒任务（提醒ID：%d）", reminderIDs[0])
+		operationlog.Record(r, currentUser.Username, action)
+	} else {
+		action := fmt.Sprintf("批量删除录像提醒任务（共 %d 条）", len(reminderIDs))
+		operationlog.Record(r, currentUser.Username, action)
+	}
+
+	// 重定向回提醒列表
+	status := r.FormValue("status")
+	page := r.FormValue("page")
+	redirectURL := "/audit/progress/video-reminders"
+	params := []string{}
+	if status != "" {
+		params = append(params, "status="+status)
+	}
+	if page != "" {
+		params = append(params, "page="+page)
+	}
+	params = append(params, "message=DeleteSuccess")
+	if len(params) > 0 {
+		redirectURL += "?" + strings.Join(params, "&")
+	}
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 // ScheduleConfigHandler: 定时任务配置页面

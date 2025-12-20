@@ -90,6 +90,8 @@ func ParseVideoDaysIssue(comment string) (earliestDate time.Time, requiredDays i
 			"2006/01/02",
 			"2006-1-2",
 			"2006/1/2",
+			"2006-01-2",
+			"2006-1-02",
 		}
 
 		for _, format := range dateFormats {
@@ -98,10 +100,15 @@ func ParseVideoDaysIssue(comment string) (earliestDate time.Time, requiredDays i
 				fmt.Sscanf(daysStr, "%d", &days)
 				// 验证天数是否为30、90或180
 				if days == 30 || days == 90 || days == 180 {
+					logger.Errorf("成功解析录像天数不足信息: dateStr=%s, daysStr=%s, parsedDate=%s, days=%d", 
+						dateStr, daysStr, t.Format("2006-01-02"), days)
 					return t, days, true
 				}
 			}
 		}
+		logger.Errorf("日期或天数解析失败: dateStr=%s, daysStr=%s, comment=%s", dateStr, daysStr, comment)
+	} else {
+		logger.Errorf("未找到日期或天数: dateStr=%s, daysStr=%s, comment=%s", dateStr, daysStr, comment)
 	}
 
 	return time.Time{}, 0, false
@@ -109,6 +116,12 @@ func ParseVideoDaysIssue(comment string) (earliestDate time.Time, requiredDays i
 
 // CreateVideoReminder 创建录像提醒任务
 func CreateVideoReminder(tx *sql.Tx, taskID int, earliestDate time.Time, requiredDays int, auditDate time.Time) error {
+	// 验证日期是否有效（不能是零值时间）
+	if earliestDate.IsZero() {
+		logger.Errorf("创建录像提醒任务失败: 最早录像日期为零值, taskID: %d", taskID)
+		return fmt.Errorf("最早录像日期无效")
+	}
+
 	// 计算实际天数
 	actualDays := int(auditDate.Sub(earliestDate).Hours() / 24)
 	if actualDays < 0 {
@@ -259,10 +272,92 @@ func GetVideoReminders(status string, page, pageSize int) ([]VideoReminder, int,
 			continue
 		}
 
-		// 解析日期
-		vr.EarliestVideoDate, _ = time.Parse("2006-01-02", earliestDateStr)
-		vr.ReminderDate, _ = time.Parse("2006-01-02", reminderDateStr)
-		vr.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr)
+		// 解析日期（支持多种格式，包括RFC3339）
+		dateFormats := []string{
+			time.RFC3339,                    // 2006-01-02T15:04:05Z07:00 (RFC3339格式)
+			time.RFC3339Nano,                // 2006-01-02T15:04:05.999999999Z07:00
+			"2006-01-02T15:04:05Z07:00",     // 带时区的格式
+			"2006-01-02T15:04:05+08:00",     // 带时区的格式（+08:00）
+			"2006-01-02T15:04:05",           // ISO 8601格式（无时区）
+			"2006-01-02 15:04:05",          // MySQL datetime格式
+			"2006-01-02",                    // 简单日期格式
+			"2006/01/02 15:04:05",          // 斜杠分隔的datetime
+			"2006/01/02",                   // 斜杠分隔的日期
+		}
+		
+		// 解析最早录像日期
+		var parseErr error
+		parsed := false
+		for _, format := range dateFormats {
+			if vr.EarliestVideoDate, parseErr = time.Parse(format, earliestDateStr); parseErr == nil {
+				parsed = true
+				break
+			}
+		}
+		if !parsed {
+			// 尝试使用time.ParseInLocation（本地时区）
+			if vr.EarliestVideoDate, parseErr = time.ParseInLocation("2006-01-02T15:04:05", earliestDateStr, time.Local); parseErr == nil {
+				parsed = true
+			} else if vr.EarliestVideoDate, parseErr = time.ParseInLocation("2006-01-02", earliestDateStr, time.Local); parseErr == nil {
+				parsed = true
+			}
+		}
+		if !parsed {
+			logger.Errorf("解析最早录像日期失败: %s, 错误: %v", earliestDateStr, parseErr)
+			vr.EarliestVideoDate = time.Time{} // 保持零值
+		}
+		
+		// 解析提醒日期
+		parsed = false
+		for _, format := range dateFormats {
+			if vr.ReminderDate, parseErr = time.Parse(format, reminderDateStr); parseErr == nil {
+				parsed = true
+				break
+			}
+		}
+		if !parsed {
+			// 尝试使用time.ParseInLocation（本地时区）
+			if vr.ReminderDate, parseErr = time.ParseInLocation("2006-01-02T15:04:05", reminderDateStr, time.Local); parseErr == nil {
+				parsed = true
+			} else if vr.ReminderDate, parseErr = time.ParseInLocation("2006-01-02", reminderDateStr, time.Local); parseErr == nil {
+				parsed = true
+			}
+		}
+		if !parsed {
+			logger.Errorf("解析提醒日期失败: %s, 错误: %v", reminderDateStr, parseErr)
+			vr.ReminderDate = time.Time{} // 保持零值
+		}
+		
+		// 解析创建时间
+		datetimeFormats := []string{
+			time.RFC3339,                    // 2006-01-02T15:04:05Z07:00
+			time.RFC3339Nano,                // 2006-01-02T15:04:05.999999999Z07:00
+			"2006-01-02T15:04:05Z07:00",     // 带时区的格式
+			"2006-01-02T15:04:05+08:00",     // 带时区的格式（+08:00）
+			"2006-01-02T15:04:05",           // ISO 8601格式（无时区）
+			"2006-01-02 15:04:05",           // MySQL datetime格式
+			"2006-01-02 15:04:05.000000",     // MySQL datetime with microseconds
+			"2006-01-02",                    // 简单日期格式
+		}
+		parsed = false
+		for _, format := range datetimeFormats {
+			if vr.CreatedAt, parseErr = time.Parse(format, createdAtStr); parseErr == nil {
+				parsed = true
+				break
+			}
+		}
+		if !parsed {
+			// 尝试使用time.ParseInLocation（本地时区）
+			if vr.CreatedAt, parseErr = time.ParseInLocation("2006-01-02 15:04:05", createdAtStr, time.Local); parseErr == nil {
+				parsed = true
+			} else if vr.CreatedAt, parseErr = time.ParseInLocation("2006-01-02T15:04:05", createdAtStr, time.Local); parseErr == nil {
+				parsed = true
+			}
+		}
+		if !parsed {
+			logger.Errorf("解析创建时间失败: %s, 错误: %v", createdAtStr, parseErr)
+			vr.CreatedAt = time.Time{} // 保持零值
+		}
 		if notifiedAt.Valid {
 			vr.NotifiedAt = notifiedAt
 		}
@@ -391,5 +486,47 @@ func GetReminderCountByTaskID(taskID int) (int, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+// DeleteVideoReminders 批量删除录像提醒任务
+func DeleteVideoReminders(reminderIDs []int) error {
+	if len(reminderIDs) == 0 {
+		return fmt.Errorf("提醒ID列表为空")
+	}
+
+	// 构建IN子句
+	placeholders := strings.Repeat("?,", len(reminderIDs))
+	placeholders = placeholders[:len(placeholders)-1] // 移除最后一个逗号
+
+	deleteSQL := fmt.Sprintf("DELETE FROM audit_video_reminders WHERE id IN (%s)", placeholders)
+	
+	// 转换ID为interface{}切片
+	args := make([]interface{}, len(reminderIDs))
+	for i, id := range reminderIDs {
+		args[i] = id
+	}
+
+	_, err := db.DBInstance.Exec(deleteSQL, args...)
+	if err != nil {
+		logger.Errorf("批量删除录像提醒任务失败: %v, IDs: %v", err, reminderIDs)
+		return err
+	}
+
+	logger.Errorf("批量删除录像提醒任务成功: 共 %d 条, IDs: %v", len(reminderIDs), reminderIDs)
+	return nil
+}
+
+// DeleteVideoReminder 删除单个录像提醒任务
+func DeleteVideoReminder(reminderID int) error {
+	deleteSQL := `DELETE FROM audit_video_reminders WHERE id = ?`
+	
+	_, err := db.DBInstance.Exec(deleteSQL, reminderID)
+	if err != nil {
+		logger.Errorf("删除录像提醒任务失败: %v, reminderID: %d", err, reminderID)
+		return err
+	}
+
+	logger.Errorf("删除录像提醒任务成功: reminderID=%d", reminderID)
+	return nil
 }
 

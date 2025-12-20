@@ -15,3 +15,4 @@ INSERT INTO audit_video_reminder_schedule_config (frequency, hour, enabled, upda
 VALUES ('daily', 1, 1, 'system')
 ON DUPLICATE KEY UPDATE frequency=VALUES(frequency), hour=VALUES(hour);
 
+

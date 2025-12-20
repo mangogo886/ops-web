@@ -178,6 +178,18 @@
     .btn-success:hover {
         background-color: #229954;
     }
+    .btn-danger {
+        background-color: #e74c3c;
+        color: white;
+    }
+    .btn-danger:hover {
+        background-color: #c0392b;
+    }
+    .btn-danger:disabled {
+        background-color: #95a5a6;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
 
     .pagination {
         margin-top: 20px;
@@ -212,6 +224,19 @@
         if (msg.includes('CompleteSuccess')) {
             alert('标记为已处理成功！');
         }
+        if (msg.includes('DeleteSuccess')) {
+            alert('删除成功！');
+        }
+        
+        // 监听复选框变化，更新批量删除按钮状态
+        var checkboxes = document.querySelectorAll('input[type="checkbox"][name="reminder_id"]');
+        var batchDeleteBtn = document.getElementById('batchDeleteBtn');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                var checkedCount = document.querySelectorAll('input[type="checkbox"][name="reminder_id"]:checked').length;
+                batchDeleteBtn.disabled = checkedCount === 0;
+            });
+        });
     });
 
     function confirmComplete(reminderId, fileName) {
@@ -235,6 +260,85 @@
             document.body.appendChild(form);
             form.submit();
         }
+    }
+
+    function batchDelete() {
+        var checkedBoxes = document.querySelectorAll('input[type="checkbox"][name="reminder_id"]:checked');
+        if (checkedBoxes.length === 0) {
+            alert('请选择要删除的记录！');
+            return;
+        }
+        
+        var count = checkedBoxes.length;
+        var confirmMsg = count === 1 ? '确定要删除这条记录吗？' : '确定要删除选中的 ' + count + ' 条记录吗？';
+        
+        if (confirm(confirmMsg)) {
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/audit/progress/video-reminders/delete';
+            
+            checkedBoxes.forEach(function(checkbox) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'reminder_id';
+                input.value = checkbox.value;
+                form.appendChild(input);
+            });
+            
+            var statusInput = document.createElement('input');
+            statusInput.type = 'hidden';
+            statusInput.name = 'status';
+            statusInput.value = '{{.Status}}';
+            form.appendChild(statusInput);
+            
+            var pageInput = document.createElement('input');
+            pageInput.type = 'hidden';
+            pageInput.name = 'page';
+            pageInput.value = '{{.CurrentPage}}';
+            form.appendChild(pageInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    function deleteSingle(reminderId, fileName) {
+        if (confirm('确定要删除档案"' + fileName + '"的提醒记录吗？')) {
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/audit/progress/video-reminders/delete';
+            
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'reminder_id';
+            input.value = reminderId;
+            form.appendChild(input);
+            
+            var statusInput = document.createElement('input');
+            statusInput.type = 'hidden';
+            statusInput.name = 'status';
+            statusInput.value = '{{.Status}}';
+            form.appendChild(statusInput);
+            
+            var pageInput = document.createElement('input');
+            pageInput.type = 'hidden';
+            pageInput.name = 'page';
+            pageInput.value = '{{.CurrentPage}}';
+            form.appendChild(pageInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    function toggleAll(source) {
+        var checkboxes = document.querySelectorAll('input[type="checkbox"][name="reminder_id"]');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.checked = source.checked;
+        });
+        
+        var batchDeleteBtn = document.getElementById('batchDeleteBtn');
+        batchDeleteBtn.disabled = !source.checked;
     }
     </script>
 </head>
@@ -260,7 +364,10 @@
         <a href="/audit/progress" class="back-btn">← 返回设备审核进度</a>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h1 style="margin: 0;">录像天数不足提醒</h1>
-            <a href="/audit/progress/video-reminders/schedule" class="btn btn-primary" style="text-decoration: none;">⚙️ 定时任务设置</a>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" onclick="batchDelete()" class="btn btn-danger" id="batchDeleteBtn" disabled style="text-decoration: none; border: none; cursor: pointer;">🗑️ 批量删除</button>
+                <a href="/audit/progress/video-reminders/schedule" class="btn btn-primary" style="text-decoration: none;">⚙️ 定时任务设置</a>
+            </div>
         </div>
         
         <div class="search-container">
@@ -282,6 +389,7 @@
         <table>
             <thead>
                 <tr>
+                    <th><input type="checkbox" onclick="toggleAll(this)" title="全选/取消全选"></th>
                     <th>序号</th>
                     <th>档案名称</th>
                     <th>机构名称</th>
@@ -299,6 +407,7 @@
                 {{if .List}}
                     {{range $index, $item := .List}}
                     <tr>
+                        <td><input type="checkbox" name="reminder_id" value="{{$item.ID}}"></td>
                         <td>{{$item.ID}}</td>
                         <td><a href="/audit/progress?task_id={{$item.TaskID}}" style="color: #3498db; text-decoration: none; font-weight: 500;">{{$item.FileName}}</a></td>
                         <td>{{$item.Organization}}</td>
@@ -324,12 +433,14 @@
                             <br><span style="font-size: 12px; color: #999;">处理人：{{$item.CompletedBy.String}}</span>
                             {{end}}
                             {{end}}
+                            <br>
+                            <a href="#" onclick="deleteSingle({{$item.ID}}, '{{$item.FileName}}'); return false;" class="btn btn-danger" style="margin-top: 5px; font-size: 12px; padding: 4px 8px;">删除</a>
                         </td>
                     </tr>
                     {{end}}
                 {{else}}
                     <tr>
-                        <td colspan="11" style="text-align: center; color: #999; padding: 40px;">暂无提醒任务</td>
+                        <td colspan="12" style="text-align: center; color: #999; padding: 40px;">暂无提醒任务</td>
                     </tr>
                 {{end}}
             </tbody>
