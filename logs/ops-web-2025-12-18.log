@@ -1,3 +1,0 @@
-2025/12/18 21:05:55 logger.go:43: [ERROR] 审核进度-导入失败，第2行数据错误: Error 1048 (23000): Column 'recording_retention_days' cannot be null, 文件名: 月度建档数据_20251217_214639.xlsx
-2025/12/18 21:06:07 logger.go:43: [ERROR] 审核进度-导入失败，第2行数据错误: Error 1048 (23000): Column 'recording_retention_days' cannot be null, 文件名: 月度建档数据_20251217_214639.xlsx
-2025/12/18 21:06:23 logger.go:43: [ERROR] 审核进度-导入失败，第2行数据错误: Error 1406 (22001): Data too long for column 'device_code' at row 1, 文件名: 卡口设备档案（三角）(已编码).xlsx
