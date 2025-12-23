@@ -713,7 +713,17 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 更新审核意见和状态
-		updateSQL := `UPDATE checkpoint_tasks SET audit_comment = ?, audit_status = ?, updated_at = NOW() WHERE id = ?`
+		// 如果状态变为"已完成"，且completed_at为空，则设置completed_at为当前时间（只记录首次完成时间）
+		updateSQL := `UPDATE checkpoint_tasks 
+		              SET audit_comment = ?, 
+		                  audit_status = ?, 
+		                  updated_at = NOW(),
+		                  completed_at = CASE 
+		                      WHEN ? = '已完成' AND completed_at IS NULL 
+		                      THEN NOW()
+		                      ELSE completed_at
+		                  END
+		              WHERE id = ?`
 		var comment interface{}
 		if auditComment == "" {
 			comment = nil
@@ -721,7 +731,7 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 			comment = auditComment
 		}
 
-		_, err = tx.Exec(updateSQL, comment, auditStatus, taskID)
+		_, err = tx.Exec(updateSQL, comment, auditStatus, auditStatus, taskID)
 		if err != nil {
 			tx.Rollback()
 			http.Error(w, "更新审核意见失败: "+err.Error(), http.StatusInternalServerError)
