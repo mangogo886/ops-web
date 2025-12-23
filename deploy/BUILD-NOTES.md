@@ -74,3 +74,5 @@ go build -ldflags='-s -w' -o deploy\ops-web-pro.exe .
 - 首次运行前需要执行数据库初始化SQL脚本
 - 配置文件路径为相对路径 `config/config.json`，确保可执行文件与config目录在同一目录下
 
+
+

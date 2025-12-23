@@ -304,7 +304,7 @@
     </div>
 
     <div class="content">
-        <a href="/checkpoint/progress" class="back-btn">← 返回卡口审核进度</a>
+        <a href="{{.BackURL}}" class="back-btn">← 返回卡口审核进度</a>
         
         <h1>编辑审核意见</h1>
         
@@ -321,6 +321,13 @@
         <!-- 编辑表单 -->
         <form class="edit-form" action="/checkpoint/progress/edit" method="POST">
             <input type="hidden" name="task_id" value="{{.Task.ID}}">
+            <!-- Hidden fields for query parameters -->
+            {{if ne .Query ""}}
+            <input type="hidden" name="file_name" value="{{index .QueryParams "file_name"}}">
+            <input type="hidden" name="audit_status" value="{{index .QueryParams "audit_status"}}">
+            <input type="hidden" name="archive_type" value="{{index .QueryParams "archive_type"}}">
+            <input type="hidden" name="sample_status" value="{{index .QueryParams "sample_status"}}">
+            {{end}}
             
             <div class="form-group">
                 <label for="audit_status">审核状态 <span style="color: #e74c3c;">*</span></label>
@@ -338,7 +345,7 @@
             
             <div class="btn-group">
                 <button type="submit" class="btn btn-primary">保存</button>
-                <a href="/checkpoint/progress" class="btn btn-secondary">取消</a>
+                <a href="{{.BackURL}}" class="btn btn-secondary">取消</a>
             </div>
         </form>
     </div>

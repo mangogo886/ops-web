@@ -1024,10 +1024,10 @@ function confirmDelete(taskId, fileName) {
                         <div class="action-dropdown">
                             <a href="#" class="action-dropdown-btn">操作 ▼</a>
                             <div class="action-dropdown-menu">
-                                <a href="/audit/progress/detail?task_id={{$task.ID}}" class="action-dropdown-item detail">查看明细</a>
-                                <a href="/audit/progress/edit?task_id={{$task.ID}}" class="action-dropdown-item edit">编辑</a>
+                                <a href="{{$task.DetailURL}}" class="action-dropdown-item detail">查看明细</a>
+                                <a href="{{$task.EditURL}}" class="action-dropdown-item edit">编辑</a>
                                 {{if eq $task.AuditStatus "已完成"}}
-                                <a href="/audit/progress/sample?task_id={{$task.ID}}" class="action-dropdown-item sample">抽检</a>
+                                <a href="{{$task.SampleURL}}" class="action-dropdown-item sample">抽检</a>
                                 {{end}}
                                 <a href="#" onclick="openUploadModal({{$task.ID}}, '{{$task.FileName}}'); return false;" class="action-dropdown-item upload">上传文件</a>
                                 {{if $.CanDelete}}
@@ -1058,16 +1058,16 @@ function confirmDelete(taskId, fileName) {
         {{end}}
         {{if gt .TotalPages 1}}
             {{if gt .CurrentPage .FirstPage}}
-            <a href="/audit/progress?page={{.FirstPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">首页</a>
+            <a href="/audit/progress?page={{.FirstPage}}{{if ne .Query ""}}&{{.Query}}{{end}}" class="page-btn">首页</a>
             {{end}}
             {{if .HasPrev}}
-            <a href="/audit/progress?page={{.PrevPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">上一页</a>
+            <a href="/audit/progress?page={{.PrevPage}}{{if ne .Query ""}}&{{.Query}}{{end}}" class="page-btn">上一页</a>
             {{end}}
             {{if .HasNext}}
-            <a href="/audit/progress?page={{.NextPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">下一页</a>
+            <a href="/audit/progress?page={{.NextPage}}{{if ne .Query ""}}&{{.Query}}{{end}}" class="page-btn">下一页</a>
             {{end}}
             {{if lt .CurrentPage .LastPage}}
-            <a href="/audit/progress?page={{.LastPage}}{{if .Query}}&{{.Query}}{{end}}" class="page-btn">最后一页</a>
+            <a href="/audit/progress?page={{.LastPage}}{{if ne .Query ""}}&{{.Query}}{{end}}" class="page-btn">最后一页</a>
             {{end}}
         {{end}}
     </div>

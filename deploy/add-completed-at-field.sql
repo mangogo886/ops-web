@@ -15,3 +15,5 @@ AFTER `updated_at`;
 CREATE INDEX `idx_audit_tasks_completed_at` ON `audit_tasks`(`completed_at`);
 CREATE INDEX `idx_checkpoint_tasks_completed_at` ON `checkpoint_tasks`(`completed_at`);
 
+
+

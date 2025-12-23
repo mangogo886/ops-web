@@ -314,7 +314,7 @@
     </div>
 
     <div class="content">
-        <a href="/audit/progress" class="back-btn">← 返回设备审核进度</a>
+        <a href="{{.BackURL}}" class="back-btn">← 返回设备审核进度</a>
         
         <h1>抽检</h1>
         
@@ -334,7 +334,7 @@
         </div>
         
         <!-- 抽检表单 -->
-        <form class="edit-form" action="/audit/progress/sample" method="POST">
+        <form class="edit-form" action="/audit/progress/sample" method="POST" id="sampleForm">
             <input type="hidden" name="task_id" value="{{.Task.ID}}">
             
             <div class="form-group">
@@ -358,7 +358,7 @@
             
             <div class="btn-group">
                 <button type="submit" class="btn btn-primary">提交抽检</button>
-                <a href="/audit/progress" class="btn btn-secondary">取消</a>
+                <a href="{{.BackURL}}" class="btn btn-secondary">取消</a>
             </div>
         </form>
     </div>
@@ -377,6 +377,24 @@
     </div>
 
     <script>
+        // 页面加载时，将URL中的筛选条件参数添加到表单中
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.getElementById('sampleForm');
+            var urlParams = new URLSearchParams(window.location.search);
+            var filterParams = ['file_name', 'audit_status', 'archive_type', 'sample_status'];
+            
+            filterParams.forEach(function(param) {
+                var value = urlParams.get(param);
+                if (value) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = param;
+                    input.value = value;
+                    form.appendChild(input);
+                }
+            });
+        });
+
         // 抽检历史弹窗相关变量
         var currentSampleTaskId = null;
         var isSampleDragging = false;

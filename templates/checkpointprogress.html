@@ -855,10 +855,10 @@ function confirmDelete(taskId, fileName) {
                         <div class="action-dropdown">
                             <a href="#" class="action-dropdown-btn">操作 ▼</a>
                             <div class="action-dropdown-menu">
-                                <a href="/checkpoint/progress/detail?task_id={{$task.ID}}" class="action-dropdown-item detail">查看明细</a>
-                                <a href="/checkpoint/progress/edit?task_id={{$task.ID}}" class="action-dropdown-item edit">编辑</a>
+                                <a href="{{$task.DetailURL}}" class="action-dropdown-item detail">查看明细</a>
+                                <a href="{{$task.EditURL}}" class="action-dropdown-item edit">编辑</a>
                                 {{if eq $task.AuditStatus "已完成"}}
-                                <a href="/checkpoint/progress/sample?task_id={{$task.ID}}" class="action-dropdown-item sample">抽检</a>
+                                <a href="{{$task.SampleURL}}" class="action-dropdown-item sample">抽检</a>
                                 {{end}}
                                 <a href="#" onclick="openUploadModal({{$task.ID}}, '{{$task.FileName}}'); return false;" class="action-dropdown-item upload">上传文件</a>
                                 {{if $.CanDelete}}
