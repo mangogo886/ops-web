@@ -766,6 +766,17 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 	if currentUser := auth.GetCurrentUser(r); currentUser != nil {
 		action := fmt.Sprintf("导入审核档案 Excel（档案名称：%s，机构：%s，是否单兵设备：%d，档案类型：%s，共 %d 条数据）", fileNameWithoutExt, organization, isSingleSoldier, archiveType, importedCount)
 		operationlog.Record(r, currentUser.Username, action)
+		
+		// 广播新任务创建事件
+		hub := GetEventHub()
+		hub.BroadcastTaskCreated(int(taskID), map[string]interface{}{
+			"file_name":      fileNameWithoutExt,
+			"organization":   organization,
+			"record_count":   importedCount,
+			"archive_type":   archiveType,
+			"is_single_soldier": isSingleSoldier,
+			"imported_by":     currentUser.Username,
+		})
 	}
 
 	http.Redirect(w, r, "/audit/progress?message=ImportSuccess&count="+strconv.Itoa(importedCount), http.StatusSeeOther)
@@ -1020,6 +1031,14 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		if currentUser := auth.GetCurrentUser(r); currentUser != nil {
 			action := fmt.Sprintf("编辑审核意见（档案ID：%d，状态：%s）", taskID, auditStatus)
 			operationlog.Record(r, currentUser.Username, action)
+			
+			// 广播任务更新事件
+			hub := GetEventHub()
+			hub.BroadcastTaskUpdated(taskID, map[string]interface{}{
+				"audit_status":  auditStatus,
+				"audit_comment": auditComment,
+				"updated_by":    currentUser.Username,
+			})
 		}
 
 		redirectURL := "/audit/progress?message=EditSuccess" + query
@@ -1638,6 +1657,10 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if currentUser2 != nil {
 		action := fmt.Sprintf("删除审核档案（档案名称：%s，机构：%s，包含 %d 条明细）", task.FileName, task.Organization, detailCount)
 		operationlog.Record(r, currentUser2.Username, action)
+		
+		// 广播任务删除事件
+		hub := GetEventHub()
+		hub.BroadcastTaskDeleted(taskID)
 	}
 
 	// 重定向回列表页（保留查询参数）
@@ -2237,6 +2260,14 @@ func SampleHandler(w http.ResponseWriter, r *http.Request) {
 		// 记录操作日志
 		action := fmt.Sprintf("抽检设备审核档案（档案ID：%d，结果：%s）", taskID, sampleResult)
 		operationlog.Record(r, currentUser.Username, action)
+		
+		// 广播任务抽检事件
+		hub := GetEventHub()
+		hub.BroadcastTaskSampled(taskID, map[string]interface{}{
+			"sample_result":  sampleResult,
+			"sample_comment": sampleComment,
+			"sampled_by":     currentUser.Username,
+		})
 
 		redirectURL := "/audit/progress?message=SampleSuccess" + query
 		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
@@ -2677,6 +2708,139 @@ func ScheduleConfigHandler(w http.ResponseWriter, r *http.Request) {
 		operationlog.Record(r, currentUser.Username, action)
 
 		http.Redirect(w, r, "/audit/progress/video-reminders/schedule?message=SaveSuccess", http.StatusSeeOther)
+	}
+}
+
+// SSEHandler: Server-Sent Events 端点，用于实时推送更新
+func SSEHandler(w http.ResponseWriter, r *http.Request) {
+	// 检查用户是否已登录
+	currentUser := auth.GetCurrentUser(r)
+	if currentUser == nil {
+		http.Error(w, "未登录", http.StatusUnauthorized)
+		return
+	}
+
+	// 设置SSE响应头
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no") // 禁用Nginx缓冲
+
+	// 创建客户端
+	clientID := fmt.Sprintf("%d_%d", currentUser.ID, time.Now().UnixNano())
+	client := &Client{
+		ID:      clientID,
+		Send:    make(chan Event, 256),
+		UserID:  currentUser.ID,
+		Page:    1, // 可以从查询参数获取
+		Filters: make(map[string]string),
+	}
+
+	// 从查询参数获取筛选条件
+	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil {
+			client.Page = page
+		}
+	}
+	if searchName := r.URL.Query().Get("file_name"); searchName != "" {
+		client.Filters["file_name"] = searchName
+	}
+	if auditStatus := r.URL.Query().Get("audit_status"); auditStatus != "" {
+		client.Filters["audit_status"] = auditStatus
+	}
+	if archiveType := r.URL.Query().Get("archive_type"); archiveType != "" {
+		client.Filters["archive_type"] = archiveType
+	}
+	if sampleStatus := r.URL.Query().Get("sample_status"); sampleStatus != "" {
+		client.Filters["sample_status"] = sampleStatus
+	}
+
+	// 注册客户端
+	hub := GetEventHub()
+	hub.register <- client
+	logger.Infof("[SSEHandler] 客户端已注册: %s (用户ID: %d)", clientID, currentUser.ID)
+	
+	// 等待一小段时间确保注册完成
+	time.Sleep(100 * time.Millisecond)
+
+	// 确保在函数退出时注销客户端
+	defer func() {
+		logger.Infof("[SSEHandler] 客户端断开连接: %s", clientID)
+		hub.unregister <- client
+	}()
+
+	// 发送初始连接成功消息
+	initialEvent := Event{
+		Type:      "connected",
+		TaskID:    0,
+		Data:      map[string]interface{}{"message": "连接成功"},
+		Timestamp: time.Now(),
+	}
+	if sseData, err := FormatSSE(initialEvent); err == nil {
+		if _, err := fmt.Fprintf(w, sseData); err != nil {
+			logger.Errorf("[SSEHandler] 发送初始消息失败: %v", err)
+			return
+		}
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		} else {
+			logger.Infof("[SSEHandler] 警告: ResponseWriter不支持Flush")
+		}
+		logger.Infof("[SSEHandler] 初始连接消息已发送")
+	} else {
+		logger.Errorf("[SSEHandler] 格式化初始消息失败: %v", err)
+		return
+	}
+
+	// 监听客户端断开连接
+	ctx := r.Context()
+	notify := ctx.Done()
+
+	// 发送心跳（每30秒）
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	// 主循环：监听事件和心跳
+	for {
+		select {
+		case <-notify:
+			// 客户端断开连接
+			return
+
+		case event, ok := <-client.Send:
+			if !ok {
+				// 通道已关闭
+				return
+			}
+
+			// 格式化并发送事件
+			sseData, err := FormatSSE(event)
+			if err != nil {
+				logger.Errorf("SSE格式化失败: %v", err)
+				continue
+			}
+
+			if _, err := fmt.Fprintf(w, sseData); err != nil {
+				logger.Errorf("SSE发送失败: %v", err)
+				return
+			}
+
+			// 立即刷新响应
+			w.(http.Flusher).Flush()
+
+		case <-ticker.C:
+			// 发送心跳保持连接
+			heartbeat := Event{
+				Type:      "heartbeat",
+				TaskID:    0,
+				Data:      map[string]interface{}{},
+				Timestamp: time.Now(),
+			}
+			if sseData, err := FormatSSE(heartbeat); err == nil {
+				fmt.Fprintf(w, sseData)
+				w.(http.Flusher).Flush()
+			}
+		}
 	}
 }
 

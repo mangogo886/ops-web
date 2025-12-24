@@ -10,6 +10,7 @@ import (
 
 var (
 	errorLog *log.Logger
+	infoLog  *log.Logger
 	logFile  *os.File
 )
 
@@ -33,6 +34,7 @@ func InitLogger() error {
 
 	logFile = file
 	errorLog = log.New(file, "", log.LstdFlags|log.Lshortfile)
+	infoLog = log.New(file, "", log.LstdFlags|log.Lshortfile)
 
 	return nil
 }
@@ -47,6 +49,18 @@ func Error(format string, v ...interface{}) {
 // Errorf 记录错误日志（带格式化）
 func Errorf(format string, v ...interface{}) {
 	Error(format, v...)
+}
+
+// Info 记录信息日志
+func Info(format string, v ...interface{}) {
+	if infoLog != nil {
+		infoLog.Printf("[INFO] "+format, v...)
+	}
+}
+
+// Infof 记录信息日志（带格式化）
+func Infof(format string, v ...interface{}) {
+	Info(format, v...)
 }
 
 // Close 关闭日志文件

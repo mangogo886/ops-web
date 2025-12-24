@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}} - 档案审核管理</title>
+    <style>
+    body { 
+        margin: 0; 
+        padding: 0; 
+        font-family: "Microsoft YaHei", sans-serif; 
+        display: flex; 
+        height: 100vh; 
+    }
+    
+    /* 左侧导航 */
+    .sidebar { 
+        width: 180px; 
+        background-color: #2c3e50; 
+        color: white; 
+        display: flex; 
+        flex-direction: column; 
+    }
+    .sidebar h3 { 
+        text-align: center; 
+        padding: 20px 0; 
+        border-bottom: 1px solid #34495e; 
+        margin: 0; 
+    }
+    .menu-item { 
+        padding: 15px 20px; 
+        color: #ecf0f1; 
+        text-decoration: none; 
+        display: block; 
+        border-bottom: 1px solid #34495e; 
+    }
+    .menu-item:hover { 
+        background-color: #34495e; 
+    }
+    .menu-item.active { 
+        background-color: #3498db; 
+    }
+    .submenu-item {
+        padding: 12px 20px 12px 40px;
+        font-size: 14px;
+        color: #bdc3c7;
+        text-decoration: none;
+        display: block;
+        border-bottom: 1px solid #34495e;
+    }
+    .submenu-item:hover {
+        background-color: #34495e;
+    }
+    .submenu-item.active {
+        background-color: #2980b9;
+        color: white;
+    }
+    
+    .content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+    }
+    
+    h1 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+    }
+
+    /* 表单样式 */
+    .edit-form {
+        background: white;
+        padding: 30px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        max-width: 800px;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 8px;
+    }
+    .form-group input[type="text"],
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+    .form-group textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+    .form-group select {
+        width: 300px;
+    }
+    .back-btn {
+        display: inline-block;
+        padding: 8px 15px;
+        background-color: #95a5a6;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .back-btn:hover {
+        background-color: #7f8c8d;
+    }
+    .btn-group {
+        margin-top: 30px;
+        display: flex;
+        gap: 10px;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-primary {
+        background-color: #3498db;
+        color: white;
+    }
+    .btn-primary:hover {
+        background-color: #2980b9;
+    }
+    .btn-secondary {
+        background-color: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background-color: #7f8c8d;
+    }
+    .task-info {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .task-info-row {
+        margin-bottom: 8px;
+        color: #555;
+    }
+
+    /* 审核意见记录弹窗 */
+    .history-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+    }
+    .history-modal-content {
+        position: absolute;
+        background-color: #fefefe;
+        border: 1px solid #888;
+        border-radius: 5px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        width: 800px;
+        height: 600px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        resize: both;
+        overflow: hidden;
+        min-width: 600px;
+        min-height: 400px;
+    }
+    .history-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        border-bottom: 1px solid #ddd;
+        background-color: #2c3e50;
+        color: white;
+        cursor: move;
+        flex-shrink: 0;
+    }
+    .history-modal-header h3 {
+        margin: 0;
+        color: white;
+    }
+    .history-modal-close {
+        color: #aaa;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        line-height: 1;
+    }
+    .history-modal-close:hover,
+    .history-modal-close:focus {
+        color: white;
+    }
+    .history-modal-body {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background-color: #f5f6fa;
+    }
+    .history-item {
+        background: white;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        margin-bottom: 15px;
+        padding: 15px;
+        border-left: 4px solid #3498db;
+    }
+    .history-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #ecf0f1;
+    }
+    .history-item-time {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 14px;
+    }
+    .history-item-meta {
+        display: flex;
+        gap: 15px;
+        font-size: 13px;
+        color: #7f8c8d;
+    }
+    .history-item-status {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .history-item-status.未审核 {
+        background-color: #ecf0f1;
+        color: #34495e;
+    }
+    .history-item-status.已审核待整改 {
+        background-color: #f39c12;
+        color: white;
+    }
+    .history-item-status.已完成 {
+        background-color: #27ae60;
+        color: white;
+    }
+    .history-item-comment {
+        color: #555;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        margin-top: 10px;
+    }
+    .history-item-comment:empty::before {
+        content: "（无审核意见）";
+        color: #95a5a6;
+        font-style: italic;
+    }
+    .history-loading {
+        text-align: center;
+        padding: 40px;
+        color: #7f8c8d;
+    }
+    .history-empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: #95a5a6;
+        font-size: 16px;
+    }
+</style>
+</head>
+<body>
+    <div class="sidebar">
+        <h3>档案审核管理</h3>
+        <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
+        <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
+        <a href="/checkpoint/filelist" class="submenu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}">卡口建档明细</a>
+        <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
+        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">设备审核进度</a>
+        <a href="/audit/progress/video-reminders" class="submenu-item {{if eq .SubMenu "video_reminders"}}active{{end}}">录像天数不足提醒</a>
+        <a href="/checkpoint/progress" class="submenu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}">卡口审核进度</a>
+        <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
+        <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
+        <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/permission" class="submenu-item {{if eq .SubMenu "permission"}}active{{end}}">权限设置</a>
+        <a href="/taskconfig" class="submenu-item {{if eq .SubMenu "task_config"}}active{{end}}">任务配置</a>
+        <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
+    </div>
+
+    <div class="content">
+        <a href="{{.BackURL}}" class="back-btn">← 返回卡口审核进度</a>
+        
+        <h1>编辑审核意见</h1>
+        
+        <!-- 档案信息 -->
+        <div class="task-info">
+            <div class="task-info-row"><strong>档案名称：</strong>{{.Task.FileName}}</div>
+            <div class="task-info-row"><strong>机构名称：</strong>{{.Task.Organization}}</div>
+            <div class="task-info-row"><strong>导入时间：</strong>{{.Task.ImportTime}}</div>
+            <div class="task-info-row" style="margin-top: 15px;">
+                <a href="#" onclick="openAuditHistoryModal({{.Task.ID}}); return false;" class="back-btn" style="background-color: #16a085; margin-right: 10px;">审核意见记录</a>
+            </div>
+        </div>
+        
+        <!-- 编辑表单 -->
+        <form class="edit-form" action="/checkpoint/progress/edit" method="POST" id="editForm">
+            <input type="hidden" name="task_id" value="{{.Task.ID}}">
+            <!-- Hidden fields for query parameters (excluding audit_status which is in the select) -->
+            {{if ne .Query ""}}
+            <input type="hidden" name="file_name" value="{{index .QueryParams "file_name"}}">
+            <input type="hidden" name="archive_type" value="{{index .QueryParams "archive_type"}}">
+            <input type="hidden" name="sample_status" value="{{index .QueryParams "sample_status"}}">
+            {{end}}
+            
+            <div class="form-group">
+                <label for="audit_status">审核状态 <span style="color: #e74c3c;">*</span></label>
+                <select id="audit_status" name="audit_status" required>
+                    <option value="未审核" {{if eq .Task.AuditStatus "未审核"}}selected{{end}}>未审核</option>
+                    <option value="已审核待整改" {{if eq .Task.AuditStatus "已审核待整改"}}selected{{end}}>已审核待整改</option>
+                    <option value="已完成" {{if eq .Task.AuditStatus "已完成"}}selected{{end}}>已完成</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="audit_comment">审核意见</label>
+                <textarea id="audit_comment" name="audit_comment" placeholder="请输入审核意见...">{{if .Task.AuditComment.Valid}}{{.Task.AuditComment.String}}{{end}}</textarea>
+            </div>
+            
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">保存</button>
+                <a href="{{.BackURL}}" class="btn btn-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- 审核意见记录弹窗 -->
+    <div id="historyModal" class="history-modal">
+        <div class="history-modal-content" id="historyModalContent">
+            <div class="history-modal-header" id="historyModalHeader">
+                <h3>审核意见记录</h3>
+                <span class="history-modal-close" onclick="closeAuditHistoryModal()">&times;</span>
+            </div>
+            <div class="history-modal-body" id="historyModalBody">
+                <div class="history-loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 页面加载时，将URL中的筛选条件参数添加到表单中（排除audit_status，因为它由select处理）
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.getElementById('editForm');
+            var urlParams = new URLSearchParams(window.location.search);
+            var filterParams = ['file_name', 'archive_type', 'sample_status']; // 排除audit_status
+            
+            filterParams.forEach(function(param) {
+                var value = urlParams.get(param);
+                if (value) {
+                    // 检查是否已存在该隐藏字段
+                    var existingInput = form.querySelector('input[name="' + param + '"]');
+                    if (!existingInput) {
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = param;
+                        input.value = value;
+                        form.appendChild(input);
+                    }
+                }
+            });
+        });
+
+        var currentTaskId = null;
+        var isDragging = false;
+        var dragOffset = { x: 0, y: 0 };
+        var modalContent = null;
+        var modalHeader = null;
+
+        // 打开审核意见记录弹窗
+        function openAuditHistoryModal(taskId) {
+            currentTaskId = taskId;
+            var modal = document.getElementById('historyModal');
+            modalContent = document.getElementById('historyModalContent');
+            modalHeader = document.getElementById('historyModalHeader');
+            var modalBody = document.getElementById('historyModalBody');
+            
+            modal.style.display = 'block';
+            modalBody.innerHTML = '<div class="history-loading">加载中...</div>';
+            
+            // 重置弹窗位置和大小
+            modalContent.style.top = '50%';
+            modalContent.style.left = '50%';
+            modalContent.style.transform = 'translate(-50%, -50%)';
+            modalContent.style.width = '800px';
+            modalContent.style.height = '600px';
+            
+            // 加载历史记录
+            fetch('/checkpoint/progress/history?task_id=' + taskId)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('网络请求失败: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success !== undefined) {
+                        if (data.success) {
+                            // 成功获取数据
+                            if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+                                displayHistory(data.data);
+                            } else {
+                                // 没有历史记录
+                                modalBody.innerHTML = '<div class="history-empty">无历史审核记录</div>';
+                            }
+                        } else {
+                            // API返回了错误
+                            modalBody.innerHTML = '<div class="history-empty">加载失败：' + (data.message || '未知错误') + '</div>';
+                        }
+                    } else {
+                        // 响应格式不正确
+                        modalBody.innerHTML = '<div class="history-empty">数据格式错误，请重试</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    modalBody.innerHTML = '<div class="history-empty">加载失败：' + error.message + '，请重试</div>';
+                });
+        }
+
+        // 关闭弹窗
+        function closeAuditHistoryModal() {
+            var modal = document.getElementById('historyModal');
+            modal.style.display = 'none';
+            currentTaskId = null;
+        }
+
+        // 显示历史记录
+        function displayHistory(historyList) {
+            var modalBody = document.getElementById('historyModalBody');
+            
+            if (!historyList || historyList.length === 0) {
+                modalBody.innerHTML = '<div class="history-empty">无历史审核记录</div>';
+                return;
+            }
+            
+            var html = '';
+            historyList.forEach(function(item) {
+                var statusClass = item.audit_status || '';
+                var comment = item.audit_comment || '';
+                html += '<div class="history-item">';
+                html += '<div class="history-item-header">';
+                html += '<span class="history-item-time">' + (item.audit_time || '') + '</span>';
+                html += '<div class="history-item-meta">';
+                html += '<span>审核人：' + (item.auditor || '系统') + '</span>';
+                html += '<span class="history-item-status ' + statusClass + '">' + (item.audit_status || '') + '</span>';
+                html += '</div>';
+                html += '</div>';
+                html += '<div class="history-item-comment">' + (comment || '') + '</div>';
+                html += '</div>';
+            });
+            
+            modalBody.innerHTML = html;
+        }
+
+        // 点击弹窗外部关闭
+        window.onclick = function(event) {
+            var modal = document.getElementById('historyModal');
+            if (event.target == modal) {
+                closeAuditHistoryModal();
+            }
+        }
+
+        // 拖拽功能
+        document.addEventListener('DOMContentLoaded', function() {
+            modalHeader = document.getElementById('historyModalHeader');
+            modalContent = document.getElementById('historyModalContent');
+            
+            if (modalHeader && modalContent) {
+                modalHeader.addEventListener('mousedown', function(e) {
+                    if (e.target.classList.contains('history-modal-close')) {
+                        return;
+                    }
+                    isDragging = true;
+                    var rect = modalContent.getBoundingClientRect();
+                    dragOffset.x = e.clientX - rect.left;
+                    dragOffset.y = e.clientY - rect.top;
+                    modalContent.style.cursor = 'move';
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', function(e) {
+                    if (!isDragging) return;
+                    
+                    var x = e.clientX - dragOffset.x;
+                    var y = e.clientY - dragOffset.y;
+                    
+                    // 限制在窗口内
+                    var maxX = window.innerWidth - modalContent.offsetWidth;
+                    var maxY = window.innerHeight - modalContent.offsetHeight;
+                    x = Math.max(0, Math.min(x, maxX));
+                    y = Math.max(0, Math.min(y, maxY));
+                    
+                    modalContent.style.left = x + 'px';
+                    modalContent.style.top = y + 'px';
+                    modalContent.style.transform = 'none';
+                });
+
+                document.addEventListener('mouseup', function() {
+                    if (isDragging) {
+                        isDragging = false;
+                        if (modalContent) {
+                            modalContent.style.cursor = 'default';
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+

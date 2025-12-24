@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"ops-web/internal/auth"
+	"ops-web/internal/auditprogress"
 	"ops-web/internal/checkpointfilelist"
 	"ops-web/internal/db"
 	"ops-web/internal/logger"
@@ -643,6 +644,14 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 	if currentUser := auth.GetCurrentUser(r); currentUser != nil {
 		action := fmt.Sprintf("导入卡口审核档案 Excel（档案名称：%s，机构：%s，共 %d 条数据）", fileNameWithoutExt, organization, importedCount)
 		operationlog.Record(r, currentUser.Username, action)
+		
+		// 广播任务创建事件
+		hub := auditprogress.GetEventHub()
+		hub.BroadcastTaskCreated(int(taskID), map[string]interface{}{
+			"file_name":    fileNameWithoutExt,
+			"organization": organization,
+			"record_count": importedCount,
+		})
 	}
 
 	http.Redirect(w, r, "/checkpoint/progress?message=ImportSuccess&count="+strconv.Itoa(importedCount), http.StatusSeeOther)
@@ -867,6 +876,17 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		if currentUser != nil {
 			action := fmt.Sprintf("编辑卡口审核意见（档案ID：%d，状态：%s）", taskID, auditStatus)
 			operationlog.Record(r, currentUser.Username, action)
+			
+			// 广播任务更新事件
+			hub := auditprogress.GetEventHub()
+			updateData := map[string]interface{}{
+				"audit_status":  auditStatus,
+				"audit_comment": auditComment,
+				"updated_by":    currentUser.Username,
+			}
+			fmt.Printf("[CheckpointEditHandler] 广播任务更新事件: taskID=%d, audit_status=%s, audit_comment=%s\n", 
+				taskID, auditStatus, auditComment)
+			hub.BroadcastTaskUpdated(int(taskID), updateData)
 		}
 
 		// 获取筛选条件参数（用于返回链接）
@@ -1515,6 +1535,10 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if currentUser2 != nil {
 		action := fmt.Sprintf("删除卡口审核档案（档案名称：%s，机构：%s，包含 %d 条明细）", task.FileName, task.Organization, detailCount)
 		operationlog.Record(r, currentUser2.Username, action)
+		
+		// 广播任务删除事件
+		hub := auditprogress.GetEventHub()
+		hub.BroadcastTaskDeleted(int(taskID))
 	}
 
 	// 重定向回列表页（保留查询参数）
@@ -2105,6 +2129,14 @@ func SampleHandler(w http.ResponseWriter, r *http.Request) {
 		// 记录操作日志
 		action := fmt.Sprintf("抽检卡口审核档案（档案ID：%d，结果：%s）", taskID, sampleResult)
 		operationlog.Record(r, currentUser.Username, action)
+		
+		// 广播任务抽检事件
+		hub := auditprogress.GetEventHub()
+		hub.BroadcastTaskSampled(int(taskID), map[string]interface{}{
+			"sample_result":  sampleResult,
+			"sample_comment": sampleComment,
+			"sampled_by":     currentUser.Username,
+		})
 
 		// 获取筛选条件参数（用于返回链接）
 		searchName := r.FormValue("file_name")

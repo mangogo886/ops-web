@@ -319,12 +319,11 @@
         </div>
         
         <!-- 编辑表单 -->
-        <form class="edit-form" action="/checkpoint/progress/edit" method="POST">
+        <form class="edit-form" action="/checkpoint/progress/edit" method="POST" id="editForm">
             <input type="hidden" name="task_id" value="{{.Task.ID}}">
-            <!-- Hidden fields for query parameters -->
+            <!-- Hidden fields for query parameters (excluding audit_status which is in the select) -->
             {{if ne .Query ""}}
             <input type="hidden" name="file_name" value="{{index .QueryParams "file_name"}}">
-            <input type="hidden" name="audit_status" value="{{index .QueryParams "audit_status"}}">
             <input type="hidden" name="archive_type" value="{{index .QueryParams "archive_type"}}">
             <input type="hidden" name="sample_status" value="{{index .QueryParams "sample_status"}}">
             {{end}}
@@ -364,6 +363,28 @@
     </div>
 
     <script>
+        // 页面加载时，将URL中的筛选条件参数添加到表单中（排除audit_status，因为它由select处理）
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.getElementById('editForm');
+            var urlParams = new URLSearchParams(window.location.search);
+            var filterParams = ['file_name', 'archive_type', 'sample_status']; // 排除audit_status
+            
+            filterParams.forEach(function(param) {
+                var value = urlParams.get(param);
+                if (value) {
+                    // 检查是否已存在该隐藏字段
+                    var existingInput = form.querySelector('input[name="' + param + '"]');
+                    if (!existingInput) {
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = param;
+                        input.value = value;
+                        form.appendChild(input);
+                    }
+                }
+            });
+        });
+
         var currentTaskId = null;
         var isDragging = false;
         var dragOffset = { x: 0, y: 0 };

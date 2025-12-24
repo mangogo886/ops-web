@@ -789,11 +789,11 @@ function confirmDelete(taskId, fileName) {
         <tbody>
             {{if .List}}
                 {{range $index, $task := .List}}
-                <tr>
+                <tr data-task-id="{{$task.ID}}">
                     <td>{{$task.ID}}</td>
                     <td>{{$task.FileName}}</td>
                     <td>
-                        <span class="{{if eq $task.AuditStatus "未审核"}}status-pending{{else if eq $task.AuditStatus "已审核待整改"}}status-reviewing{{else if eq $task.AuditStatus "已完成"}}status-completed{{end}}">
+                        <span class="audit-status-span {{if eq $task.AuditStatus "未审核"}}status-pending{{else if eq $task.AuditStatus "已审核待整改"}}status-reviewing{{else if eq $task.AuditStatus "已完成"}}status-completed{{end}}">
                             {{$task.AuditStatus}}
                         </span>
                         {{if $task.ArchiveType.Valid}}
@@ -1579,6 +1579,274 @@ function confirmDelete(taskId, fileName) {
                 });
             }
         });
+
+        // ===== SSE实时更新功能 =====
+        (function() {
+            console.log('[SSE] SSE实时更新功能模块已加载');
+            // 获取当前筛选条件
+            function getCurrentFilters() {
+                const params = new URLSearchParams(window.location.search);
+                return {
+                    page: params.get('page') || '1',
+                    file_name: params.get('file_name') || '',
+                    audit_status: params.get('audit_status') || '',
+                    archive_type: params.get('archive_type') || '',
+                    sample_status: params.get('sample_status') || ''
+                };
+            }
+
+            // 构建SSE URL
+            function buildSSEUrl() {
+                const filters = getCurrentFilters();
+                const params = new URLSearchParams();
+                if (filters.page) params.set('page', filters.page);
+                if (filters.file_name) params.set('file_name', filters.file_name);
+                if (filters.audit_status) params.set('audit_status', filters.audit_status);
+                if (filters.archive_type) params.set('archive_type', filters.archive_type);
+                if (filters.sample_status) params.set('sample_status', filters.sample_status);
+                
+                const query = params.toString();
+                return '/checkpoint/progress/events' + (query ? '?' + query : '');
+            }
+
+            // 更新任务行
+            function updateTaskRow(taskId, data) {
+                const row = document.querySelector(`tr[data-task-id="${taskId}"]`);
+                if (!row) {
+                    // 如果任务不在当前页，刷新整个列表
+                    console.log('[SSE] 任务不在当前页，刷新列表');
+                    window.location.reload();
+                    return;
+                }
+
+                console.log('[SSE] 更新任务行:', taskId, data);
+
+                // 更新审核状态 - 在第三列（td:nth-child(3)）
+                if (data.audit_status) {
+                    const statusTd = row.querySelector('td:nth-child(3)');
+                    if (statusTd) {
+                        // 查找第一个span（状态span）
+                        const statusSpan = statusTd.querySelector('span');
+                        if (statusSpan) {
+                            statusSpan.textContent = data.audit_status;
+                            // 更新类名：保留audit-status-span类，添加状态类
+                            const newStatusClass = getStatusClass(data.audit_status);
+                            statusSpan.className = 'audit-status-span ' + newStatusClass;
+                            console.log('[SSE] 审核状态已更新:', data.audit_status);
+                            
+                            // 如果审核状态更新为"已完成"，需要更新抽检状态列
+                            if (data.audit_status === '已完成') {
+                                // 检查当前抽检状态列，如果显示"-"，则更新为"待抽检"
+                                const sampleTd = row.querySelector('td:nth-child(4)');
+                                if (sampleTd) {
+                                    const currentSampleText = sampleTd.textContent.trim();
+                                    // 如果当前显示"-"或为空，则更新为"待抽检"
+                                    if (currentSampleText === '-' || currentSampleText === '') {
+                                        sampleTd.innerHTML = '<span class="sample-status pending">待抽检</span>';
+                                        console.log('[SSE] 抽检状态列已更新为"待抽检"');
+                                    }
+                                }
+                            } else {
+                                // 如果审核状态不是"已完成"，抽检状态列应该显示"-"
+                                const sampleTd = row.querySelector('td:nth-child(4)');
+                                if (sampleTd) {
+                                    sampleTd.innerHTML = '<span style="color: #999;">-</span>';
+                                }
+                            }
+                        } else {
+                            console.warn('[SSE] 未找到状态span，td内容:', statusTd.innerHTML);
+                        }
+                    } else {
+                        console.warn('[SSE] 未找到状态td');
+                    }
+                }
+
+                // 更新审核意见 - 在第五列（td:nth-child(5)）
+                if (data.audit_comment !== undefined) {
+                    const commentTd = row.querySelector('td:nth-child(5)');
+                    if (commentTd) {
+                        if (data.audit_comment && data.audit_comment.trim() !== '') {
+                            commentTd.textContent = data.audit_comment;
+                        } else {
+                            commentTd.innerHTML = '<span style="color: #999;">-</span>';
+                        }
+                        console.log('[SSE] 审核意见已更新:', data.audit_comment);
+                    } else {
+                        console.warn('[SSE] 未找到审核意见td');
+                    }
+                }
+                
+                // 更新抽检状态（如果事件中包含抽检信息）
+                if (data.sample_result !== undefined) {
+                    const sampleTd = row.querySelector('td:nth-child(4)');
+                    if (sampleTd) {
+                        // 检查审核状态是否为"已完成"
+                        const auditStatusTd = row.querySelector('td:nth-child(3)');
+                        const auditStatusSpan = auditStatusTd ? auditStatusTd.querySelector('span') : null;
+                        const currentAuditStatus = auditStatusSpan ? auditStatusSpan.textContent.trim() : '';
+                        
+                        if (currentAuditStatus === '已完成') {
+                            // 如果已抽检，显示抽检状态
+                            if (data.sample_result === '待整改') {
+                                sampleTd.innerHTML = '<span class="sample-status need-fix" title="抽检结果：待整改">已抽检</span>';
+                            } else {
+                                sampleTd.innerHTML = '<span class="sample-status completed" title="抽检结果：通过">已抽检</span>';
+                            }
+                            console.log('[SSE] 抽检状态已更新:', data.sample_result);
+                        }
+                    }
+                }
+                
+                // 添加更新动画效果
+                row.style.backgroundColor = '#fff3cd';
+                setTimeout(() => {
+                    row.style.backgroundColor = '';
+                }, 2000);
+            }
+
+            // 获取状态样式类
+            function getStatusClass(status) {
+                const statusMap = {
+                    '未审核': 'status-pending',
+                    '已审核待整改': 'status-reviewing',
+                    '已完成': 'status-completed'
+                };
+                return statusMap[status] || 'status-pending';
+            }
+
+            // 删除任务行
+            function removeTaskRow(taskId) {
+                const row = document.querySelector(`tr[data-task-id="${taskId}"]`);
+                if (row) {
+                    row.style.transition = 'opacity 0.5s';
+                    row.style.opacity = '0';
+                    setTimeout(() => {
+                        row.remove();
+                        // 刷新列表以更新分页信息
+                        window.location.reload();
+                    }, 500);
+                }
+            }
+
+            // 连接SSE
+            let eventSource = null;
+            let reconnectAttempts = 0;
+            const maxReconnectAttempts = 5;
+
+            function connectSSE() {
+                if (eventSource) {
+                    eventSource.close();
+                }
+
+                const url = buildSSEUrl();
+                eventSource = new EventSource(url);
+
+                eventSource.onopen = function() {
+                    console.log('[SSE] 连接已建立，URL:', url);
+                    reconnectAttempts = 0;
+                };
+
+                eventSource.onmessage = function(event) {
+                    console.log('[SSE] 收到原始事件数据:', event.data);
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('[SSE] 解析后的事件数据:', data);
+
+                        switch(data.type) {
+                            case 'connected':
+                                console.log('[SSE] 连接成功');
+                                break;
+                            
+                            case 'heartbeat':
+                                // 心跳，不做处理
+                                break;
+                            
+                            case 'task_created':
+                                // 新任务创建，刷新列表
+                                console.log('[SSE] 新任务创建:', data.task_id);
+                                window.location.reload();
+                                break;
+                            
+                            case 'task_updated':
+                                // 任务更新
+                                console.log('[SSE] 任务更新:', data.task_id, data.data);
+                                updateTaskRow(data.task_id, data.data);
+                                break;
+                            
+                            case 'task_deleted':
+                                // 任务删除
+                                console.log('[SSE] 任务删除:', data.task_id);
+                                removeTaskRow(data.task_id);
+                                break;
+                            
+                            case 'task_sampled':
+                                // 任务抽检
+                                console.log('[SSE] 任务抽检:', data.task_id, data.data);
+                                updateTaskRow(data.task_id, data.data);
+                                break;
+                            
+                            case 'task_refreshed':
+                                // 需要刷新整个列表
+                                console.log('[SSE] 刷新列表');
+                                window.location.reload();
+                                break;
+                            
+                            default:
+                                console.log('[SSE] 未知事件类型:', data.type);
+                        }
+                    } catch (e) {
+                        console.error('[SSE] 解析事件数据失败:', e, event.data);
+                    }
+                };
+
+                eventSource.onerror = function(error) {
+                    console.error('[SSE] 连接错误:', error, 'readyState:', eventSource.readyState);
+                    // readyState: 0=CONNECTING, 1=OPEN, 2=CLOSED
+                    if (eventSource.readyState === EventSource.CLOSED) {
+                        console.log('[SSE] 连接已关闭');
+                    }
+                    eventSource.close();
+
+                    // 自动重连
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // 指数退避，最多30秒
+                        console.log(`[SSE] ${delay/1000}秒后尝试重连 (${reconnectAttempts}/${maxReconnectAttempts})`);
+                        setTimeout(connectSSE, delay);
+                    } else {
+                        console.error('[SSE] 达到最大重连次数，停止重连');
+                    }
+                };
+            }
+
+            // 页面加载时连接SSE
+            console.log('[SSE] 检查EventSource支持:', typeof EventSource !== 'undefined');
+            if (typeof EventSource !== 'undefined') {
+                console.log('[SSE] 开始连接SSE...');
+                connectSSE();
+
+                // 页面卸载时关闭连接
+                window.addEventListener('beforeunload', function() {
+                    if (eventSource) {
+                        eventSource.close();
+                    }
+                });
+
+                // 页面可见性变化时处理连接
+                document.addEventListener('visibilitychange', function() {
+                    if (document.hidden) {
+                        // 页面隐藏时保持连接（可选：可以关闭以节省资源）
+                    } else {
+                        // 页面显示时确保连接
+                        if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+                            connectSSE();
+                        }
+                    }
+                });
+            } else {
+                console.warn('[SSE] 浏览器不支持EventSource，实时更新功能不可用');
+            }
+        })();
     </script>
 
     </div>

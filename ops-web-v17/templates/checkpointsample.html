@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}} - 档案审核管理</title>
+    <style>
+    body { 
+        margin: 0; 
+        padding: 0; 
+        font-family: "Microsoft YaHei", sans-serif; 
+        display: flex; 
+        height: 100vh; 
+    }
+    
+    /* 左侧导航 */
+    .sidebar { 
+        width: 180px; 
+        background-color: #2c3e50; 
+        color: white; 
+        display: flex; 
+        flex-direction: column; 
+    }
+    .sidebar h3 { 
+        text-align: center; 
+        padding: 20px 0; 
+        border-bottom: 1px solid #34495e; 
+        margin: 0; 
+    }
+    .menu-item { 
+        padding: 15px 20px; 
+        color: #ecf0f1; 
+        text-decoration: none; 
+        display: block; 
+        border-bottom: 1px solid #34495e; 
+    }
+    .menu-item:hover { 
+        background-color: #34495e; 
+    }
+    .menu-item.active { 
+        background-color: #3498db; 
+    }
+    .submenu-item {
+        padding: 12px 20px 12px 40px;
+        font-size: 14px;
+        color: #bdc3c7;
+        text-decoration: none;
+        display: block;
+        border-bottom: 1px solid #34495e;
+    }
+    .submenu-item:hover {
+        background-color: #34495e;
+    }
+    .submenu-item.active {
+        background-color: #2980b9;
+        color: white;
+    }
+    
+    .content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+    }
+    
+    h1 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+    }
+
+    /* 表单样式 */
+    .edit-form {
+        background: white;
+        padding: 30px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        max-width: 800px;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 8px;
+    }
+    .form-group input[type="text"],
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+    .form-group textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+    .form-group select {
+        width: 300px;
+    }
+    .back-btn {
+        display: inline-block;
+        padding: 8px 15px;
+        background-color: #95a5a6;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .back-btn:hover {
+        background-color: #7f8c8d;
+    }
+    .btn-group {
+        margin-top: 30px;
+        display: flex;
+        gap: 10px;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-primary {
+        background-color: #3498db;
+        color: white;
+    }
+    .btn-primary:hover {
+        background-color: #2980b9;
+    }
+    .btn-secondary {
+        background-color: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background-color: #7f8c8d;
+    }
+    .task-info {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .task-info-row {
+        margin-bottom: 8px;
+        color: #555;
+    }
+    .alert {
+        padding: 12px 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .alert-info {
+        background-color: #d1ecf1;
+        border-left: 4px solid #3498db;
+        color: #0c5460;
+    }
+
+    /* 抽检历史弹窗样式 */
+    .history-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+    }
+    .history-modal-content {
+        position: absolute;
+        background-color: #fefefe;
+        border: 1px solid #888;
+        border-radius: 5px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        width: 800px;
+        height: 600px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        resize: both;
+        overflow: hidden;
+        min-width: 600px;
+        min-height: 400px;
+    }
+    .history-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        border-bottom: 1px solid #ddd;
+        background-color: #2c3e50;
+        color: white;
+        cursor: move;
+        flex-shrink: 0;
+    }
+    .history-modal-header h3 {
+        margin: 0;
+        color: white;
+    }
+    .history-modal-close {
+        color: #aaa;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        line-height: 1;
+    }
+    .history-modal-close:hover,
+    .history-modal-close:focus {
+        color: white;
+    }
+    .history-modal-body {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background-color: #f5f6fa;
+    }
+    .history-item {
+        background: white;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        margin-bottom: 15px;
+        padding: 15px;
+        border-left: 4px solid #8e44ad;
+    }
+    .history-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #ecf0f1;
+    }
+    .history-item-time {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 14px;
+    }
+    .history-item-meta {
+        display: flex;
+        gap: 15px;
+        font-size: 13px;
+        color: #7f8c8d;
+    }
+    .history-item-status {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .history-item-status.通过 {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .history-item-status.不通过 {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    .history-item-status.待整改 {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .history-item-comment {
+        color: #555;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        margin-top: 10px;
+    }
+    .history-item-comment:empty::before {
+        content: "（无抽检意见）";
+        color: #95a5a6;
+        font-style: italic;
+    }
+    .history-loading {
+        text-align: center;
+        padding: 40px;
+        color: #7f8c8d;
+    }
+    .history-empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: #95a5a6;
+        font-size: 16px;
+    }
+</style>
+</head>
+<body>
+    <div class="sidebar">
+        <h3>档案审核管理</h3>
+        <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
+        <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
+        <a href="/checkpoint/filelist" class="submenu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}">卡口建档明细</a>
+        <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
+        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">设备审核进度</a>
+        <a href="/audit/progress/video-reminders" class="submenu-item {{if eq .SubMenu "video_reminders"}}active{{end}}">录像天数不足提醒</a>
+        <a href="/checkpoint/progress" class="submenu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}">卡口审核进度</a>
+        <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
+        <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
+        <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/permission" class="submenu-item {{if eq .SubMenu "permission"}}active{{end}}">权限设置</a>
+        <a href="/taskconfig" class="submenu-item {{if eq .SubMenu "task_config"}}active{{end}}">任务配置</a>
+        <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
+    </div>
+
+    <div class="content">
+        <a href="{{.BackURL}}" class="back-btn">← 返回卡口审核进度</a>
+        
+        <h1>抽检</h1>
+        
+        <!-- 提示信息 -->
+        <div class="alert alert-info">
+            <strong>提示：</strong>只有审核状态为"已完成"的任务才能进行抽检。
+        </div>
+        
+        <!-- 档案信息 -->
+        <div class="task-info">
+            <div class="task-info-row"><strong>档案名称：</strong>{{.Task.FileName}}</div>
+            <div class="task-info-row"><strong>机构名称：</strong>{{.Task.Organization}}</div>
+            <div class="task-info-row"><strong>审核状态：</strong>{{.Task.AuditStatus}}</div>
+            <div class="task-info-row" style="margin-top: 15px;">
+                <a href="#" onclick="openSampleHistoryModal({{.Task.ID}}); return false;" class="back-btn" style="background-color: #8e44ad; margin-right: 10px;">抽检历史记录</a>
+            </div>
+        </div>
+        
+        <!-- 抽检表单 -->
+        <form class="edit-form" action="/checkpoint/progress/sample" method="POST">
+            <input type="hidden" name="task_id" value="{{.Task.ID}}">
+            <!-- Hidden fields for query parameters -->
+            {{if ne .Query ""}}
+            <input type="hidden" name="file_name" value="{{index .QueryParams "file_name"}}">
+            <input type="hidden" name="audit_status" value="{{index .QueryParams "audit_status"}}">
+            <input type="hidden" name="archive_type" value="{{index .QueryParams "archive_type"}}">
+            <input type="hidden" name="sample_status" value="{{index .QueryParams "sample_status"}}">
+            {{end}}
+            
+            <div class="form-group">
+                <label for="sampled_by">抽检人员</label>
+                <input type="text" id="sampled_by" name="sampled_by" value="{{.SampledBy}}" readonly style="background-color: #f5f5f5;">
+            </div>
+            
+            <div class="form-group">
+                <label for="sample_result">抽检结果</label>
+                <select id="sample_result" name="sample_result">
+                    <option value="">请选择</option>
+                    <option value="通过">通过</option>
+                    <option value="待整改">待整改</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="sample_comment">抽检意见</label>
+                <textarea id="sample_comment" name="sample_comment" placeholder="请输入抽检意见..."></textarea>
+            </div>
+            
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">提交抽检</button>
+                <a href="{{.BackURL}}" class="btn btn-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- 抽检历史弹窗 -->
+    <div id="sampleHistoryModal" class="history-modal">
+        <div class="history-modal-content" id="sampleHistoryModalContent">
+            <div class="history-modal-header" id="sampleHistoryModalHeader">
+                <h3>抽检历史记录</h3>
+                <span class="history-modal-close" onclick="closeSampleHistoryModal()">&times;</span>
+            </div>
+            <div class="history-modal-body" id="sampleHistoryModalBody">
+                <!-- 内容将在点击按钮时加载 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 抽检历史弹窗相关变量
+        var currentSampleTaskId = null;
+        var isSampleDragging = false;
+        var sampleDragOffset = { x: 0, y: 0 };
+        var sampleModalContent = null;
+        var sampleModalHeader = null;
+
+        // 打开抽检历史弹窗
+        function openSampleHistoryModal(taskId) {
+            currentSampleTaskId = taskId;
+            var modal = document.getElementById('sampleHistoryModal');
+            sampleModalContent = document.getElementById('sampleHistoryModalContent');
+            sampleModalHeader = document.getElementById('sampleHistoryModalHeader');
+            var modalBody = document.getElementById('sampleHistoryModalBody');
+            
+            modal.style.display = 'block';
+            modalBody.innerHTML = '<div class="history-loading">加载中...</div>';
+            
+            // 重置弹窗位置和大小
+            sampleModalContent.style.top = '50%';
+            sampleModalContent.style.left = '50%';
+            sampleModalContent.style.transform = 'translate(-50%, -50%)';
+            sampleModalContent.style.width = '800px';
+            sampleModalContent.style.height = '600px';
+            
+            // 加载抽检历史记录
+            fetch('/checkpoint/progress/sample/history?task_id=' + taskId)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('网络请求失败: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success !== undefined) {
+                        if (data.success) {
+                            // 成功获取数据
+                            if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+                                displaySampleHistory(data.data);
+                            } else {
+                                // 没有历史记录
+                                modalBody.innerHTML = '<div class="history-empty">无抽检历史记录</div>';
+                            }
+                        } else {
+                            // API返回了错误
+                            modalBody.innerHTML = '<div class="history-empty">加载失败：' + (data.message || '未知错误') + '</div>';
+                        }
+                    } else {
+                        // 响应格式不正确
+                        modalBody.innerHTML = '<div class="history-empty">数据格式错误，请重试</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    modalBody.innerHTML = '<div class="history-empty">加载失败：' + error.message + '，请重试</div>';
+                });
+        }
+
+        // 关闭抽检历史弹窗
+        function closeSampleHistoryModal() {
+            var modal = document.getElementById('sampleHistoryModal');
+            modal.style.display = 'none';
+            currentSampleTaskId = null;
+        }
+
+        // 显示抽检历史记录
+        function displaySampleHistory(historyList) {
+            var modalBody = document.getElementById('sampleHistoryModalBody');
+            
+            if (!historyList || historyList.length === 0) {
+                modalBody.innerHTML = '<div class="history-empty">无抽检历史记录</div>';
+                return;
+            }
+            
+            var html = '';
+            historyList.forEach(function(item) {
+                var resultClass = item.sample_result || '';
+                var comment = item.sample_comment || '';
+                var result = item.sample_result || '';
+                
+                html += '<div class="history-item">';
+                html += '<div class="history-item-header">';
+                html += '<span class="history-item-time">' + (item.sampled_at || '') + '</span>';
+                html += '<div class="history-item-meta">';
+                html += '<span>抽检人：' + (item.sampled_by || '') + '</span>';
+                if (result) {
+                    html += '<span class="history-item-status ' + resultClass + '">' + result + '</span>';
+                }
+                html += '</div>';
+                html += '</div>';
+                html += '<div class="history-item-comment">' + (comment || '（无抽检意见）') + '</div>';
+                html += '</div>';
+            });
+            
+            modalBody.innerHTML = html;
+        }
+
+        // 点击弹窗外部关闭
+        window.addEventListener('click', function(event) {
+            var modal = document.getElementById('sampleHistoryModal');
+            if (event.target == modal) {
+                closeSampleHistoryModal();
+            }
+        });
+
+        // 抽检历史弹窗拖拽功能
+        document.addEventListener('DOMContentLoaded', function() {
+            sampleModalHeader = document.getElementById('sampleHistoryModalHeader');
+            sampleModalContent = document.getElementById('sampleHistoryModalContent');
+            
+            if (sampleModalHeader && sampleModalContent) {
+                sampleModalHeader.addEventListener('mousedown', function(e) {
+                    if (e.target.classList.contains('history-modal-close')) {
+                        return;
+                    }
+                    isSampleDragging = true;
+                    var rect = sampleModalContent.getBoundingClientRect();
+                    sampleDragOffset.x = e.clientX - rect.left;
+                    sampleDragOffset.y = e.clientY - rect.top;
+                    sampleModalContent.style.cursor = 'move';
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', function(e) {
+                    if (!isSampleDragging) return;
+                    
+                    var x = e.clientX - sampleDragOffset.x;
+                    var y = e.clientY - sampleDragOffset.y;
+                    
+                    // 限制在窗口内
+                    var maxX = window.innerWidth - sampleModalContent.offsetWidth;
+                    var maxY = window.innerHeight - sampleModalContent.offsetHeight;
+                    x = Math.max(0, Math.min(x, maxX));
+                    y = Math.max(0, Math.min(y, maxY));
+                    
+                    sampleModalContent.style.left = x + 'px';
+                    sampleModalContent.style.top = y + 'px';
+                    sampleModalContent.style.transform = 'none';
+                });
+
+                document.addEventListener('mouseup', function() {
+                    if (isSampleDragging) {
+                        isSampleDragging = false;
+                        if (sampleModalContent) {
+                            sampleModalContent.style.cursor = 'default';
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
+

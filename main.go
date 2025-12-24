@@ -93,6 +93,7 @@ func main() {
     // ===== 审核进度路由（需要登录） =====
     // 注意：必须先注册子路由，再注册父路由
     http.HandleFunc("/audit/progress", auth.RequireAuth(auditprogress.Handler))
+    http.HandleFunc("/audit/progress/events", auth.RequireAuth(auditprogress.SSEHandler)) // SSE实时更新端点
     http.HandleFunc("/audit/progress/import", auth.RequireAuth(auditprogress.ImportHandler))
     http.HandleFunc("/audit/progress/detail", auth.RequireAuth(auditprogress.DetailHandler))
     http.HandleFunc("/audit/progress/detail/export", auth.RequireAuth(auditprogress.DetailExportHandler))
@@ -116,6 +117,7 @@ func main() {
     
     // ===== 卡口审核进度路由（需要登录） =====
     http.HandleFunc("/checkpoint/progress", auth.RequireAuth(checkpointprogress.Handler))
+    http.HandleFunc("/checkpoint/progress/events", auth.RequireAuth(checkpointprogress.SSEHandler)) // SSE实时更新端点
     http.HandleFunc("/checkpoint/progress/import", auth.RequireAuth(checkpointprogress.ImportHandler))
     http.HandleFunc("/checkpoint/progress/detail", auth.RequireAuth(checkpointprogress.DetailHandler))
     http.HandleFunc("/checkpoint/progress/detail/export", auth.RequireAuth(checkpointprogress.DetailExportHandler))
@@ -152,6 +154,9 @@ func main() {
     
     // 2.2. 启动录像提醒定时任务
     auditprogress.StartVideoReminderScheduler()
+    
+    // 2.3. 初始化事件中心（用于SSE实时更新）
+    auditprogress.GetEventHub() // 这会自动启动事件中心
 
     // 3. 启动服务
     serverAddr := ":" + db.AppConfig.ServerPort
