@@ -71,16 +71,21 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	whereSQL := " WHERE 1=1"
 	args := []interface{}{}
 
-	// 月份查询：根据update_time按月份
+	// 月份查询：根据时间字段按月份
+	// 如果建档状态为"已建档"（值为"2"），使用completed_at字段；否则使用update_time字段
 	if month != "" {
 		// 验证月份格式
 		if _, err := time.Parse("2006-01", month); err == nil {
-			// 使用 YEAR() 和 MONTH() 函数来匹配月份
-			whereSQL += " AND YEAR(update_time) = ? AND MONTH(update_time) = ?"
 			parts := strings.Split(month, "-")
 			if len(parts) == 2 {
 				year, _ := strconv.Atoi(parts[0])
 				monthNum, _ := strconv.Atoi(parts[1])
+				// 如果建档状态为"已建档"（值为"2"），使用completed_at字段
+				if auditStatus == "2" {
+					whereSQL += " AND YEAR(completed_at) = ? AND MONTH(completed_at) = ?"
+				} else {
+					whereSQL += " AND YEAR(update_time) = ? AND MONTH(update_time) = ?"
+				}
 				args = append(args, year, monthNum)
 			}
 		}
@@ -153,8 +158,10 @@ func getStatistics(whereSQL string, args []interface{}) ([]StatRow, StatRow) {
 	}
 
 	// 1. 从 audit_details 表统计视频、人脸和车辆（只统计档案类型为"新增"的）
-	// 将 whereSQL 中的字段名替换为带表别名 ad. 的版本
-	auditWhereSQL := strings.ReplaceAll(whereSQL, "update_time", "ad.update_time")
+	// 将 whereSQL 中的字段名替换为带表别名 ad. 或 at. 的版本
+	// completed_at 字段在任务表（at），update_time 在明细表（ad），需要分别处理
+	auditWhereSQL := strings.ReplaceAll(whereSQL, "completed_at", "at.completed_at")
+	auditWhereSQL = strings.ReplaceAll(auditWhereSQL, "update_time", "ad.update_time")
 	auditWhereSQL = strings.ReplaceAll(auditWhereSQL, "audit_status", "ad.audit_status")
 	
 	query := `
@@ -318,9 +325,10 @@ func getStatistics(whereSQL string, args []interface{}) ([]StatRow, StatRow) {
 	rows.Close()
 
 	// 2. 从 checkpoint_details 表统计车辆（只统计档案类型为"新增"的）
-	// checkpoint_details 表和 audit_details 表都有 update_time 和 audit_status 字段，所以可以直接使用相同的 whereSQL
-	// 将 whereSQL 中的字段名替换为带表别名 cd. 的版本
-	checkpointWhereSQL := strings.ReplaceAll(whereSQL, "update_time", "cd.update_time")
+	// completed_at 字段在任务表（ct），update_time 在明细表（cd），需要分别处理
+	// 将 whereSQL 中的字段名替换为带表别名 cd. 或 ct. 的版本
+	checkpointWhereSQL := strings.ReplaceAll(whereSQL, "completed_at", "ct.completed_at")
+	checkpointWhereSQL = strings.ReplaceAll(checkpointWhereSQL, "update_time", "cd.update_time")
 	checkpointWhereSQL = strings.ReplaceAll(checkpointWhereSQL, "audit_status", "cd.audit_status")
 	
 	checkpointQuery := `
@@ -463,16 +471,21 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 	whereSQL := " WHERE 1=1"
 	args := []interface{}{}
 
-	// 月份查询：根据update_time按月份
+	// 月份查询：根据时间字段按月份
+	// 如果建档状态为"已建档"（值为"2"），使用completed_at字段；否则使用update_time字段
 	if month != "" {
 		// 验证月份格式
 		if _, err := time.Parse("2006-01", month); err == nil {
-			// 使用 YEAR() 和 MONTH() 函数来匹配月份
-			whereSQL += " AND YEAR(update_time) = ? AND MONTH(update_time) = ?"
 			parts := strings.Split(month, "-")
 			if len(parts) == 2 {
 				year, _ := strconv.Atoi(parts[0])
 				monthNum, _ := strconv.Atoi(parts[1])
+				// 如果建档状态为"已建档"（值为"2"），使用completed_at字段
+				if auditStatus == "2" {
+					whereSQL += " AND YEAR(completed_at) = ? AND MONTH(completed_at) = ?"
+				} else {
+					whereSQL += " AND YEAR(update_time) = ? AND MONTH(update_time) = ?"
+				}
 				args = append(args, year, monthNum)
 			}
 		}
