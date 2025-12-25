@@ -958,10 +958,24 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 获取筛选条件参数（用于返回链接）
-		searchName := r.FormValue("file_name")
-		auditStatusParam := r.FormValue("audit_status")
-		archiveType := r.FormValue("archive_type")
-		sampleStatus := r.FormValue("sample_status")
+		// 优先从filter_前缀的参数获取（来自URL的原始筛选条件），避免与表单中的audit_status字段冲突
+		searchName := r.FormValue("filter_file_name")
+		if searchName == "" {
+			searchName = r.FormValue("file_name")
+		}
+		auditStatusParam := r.FormValue("filter_audit_status")
+		if auditStatusParam == "" {
+			// 如果表单中没有filter_audit_status，尝试从URL查询参数获取（兼容直接访问的情况）
+			auditStatusParam = r.URL.Query().Get("audit_status")
+		}
+		archiveType := r.FormValue("filter_archive_type")
+		if archiveType == "" {
+			archiveType = r.FormValue("archive_type")
+		}
+		sampleStatus := r.FormValue("filter_sample_status")
+		if sampleStatus == "" {
+			sampleStatus = r.FormValue("sample_status")
+		}
 		
 		// 构建查询参数字符串
 		queryValues := url.Values{}
@@ -2207,10 +2221,24 @@ func SampleHandler(w http.ResponseWriter, r *http.Request) {
 		})
 
 		// 获取筛选条件参数（用于返回链接）
-		searchName := r.FormValue("file_name")
-		auditStatusParam := r.FormValue("audit_status")
-		archiveType := r.FormValue("archive_type")
-		sampleStatus := r.FormValue("sample_status")
+		// 优先从filter_前缀的参数获取（来自URL的原始筛选条件），避免与表单字段冲突
+		searchName := r.FormValue("filter_file_name")
+		if searchName == "" {
+			searchName = r.FormValue("file_name")
+		}
+		auditStatusParam := r.FormValue("filter_audit_status")
+		if auditStatusParam == "" {
+			// 如果表单中没有filter_audit_status，尝试从URL查询参数获取（兼容直接访问的情况）
+			auditStatusParam = r.URL.Query().Get("audit_status")
+		}
+		archiveType := r.FormValue("filter_archive_type")
+		if archiveType == "" {
+			archiveType = r.FormValue("archive_type")
+		}
+		sampleStatus := r.FormValue("filter_sample_status")
+		if sampleStatus == "" {
+			sampleStatus = r.FormValue("sample_status")
+		}
 		
 		// 构建查询参数字符串
 		queryValues := url.Values{}

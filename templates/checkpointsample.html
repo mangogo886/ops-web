@@ -334,15 +334,8 @@
         </div>
         
         <!-- 抽检表单 -->
-        <form class="edit-form" action="/checkpoint/progress/sample" method="POST">
+        <form class="edit-form" action="/checkpoint/progress/sample" method="POST" id="sampleForm">
             <input type="hidden" name="task_id" value="{{.Task.ID}}">
-            <!-- Hidden fields for query parameters -->
-            {{if ne .Query ""}}
-            <input type="hidden" name="file_name" value="{{index .QueryParams "file_name"}}">
-            <input type="hidden" name="audit_status" value="{{index .QueryParams "audit_status"}}">
-            <input type="hidden" name="archive_type" value="{{index .QueryParams "archive_type"}}">
-            <input type="hidden" name="sample_status" value="{{index .QueryParams "sample_status"}}">
-            {{end}}
             
             <div class="form-group">
                 <label for="sampled_by">抽检人员</label>
@@ -384,6 +377,24 @@
     </div>
 
     <script>
+        // 页面加载时，将URL中的筛选条件参数添加到表单中（使用filter_前缀避免与表单字段冲突）
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.getElementById('sampleForm');
+            var urlParams = new URLSearchParams(window.location.search);
+            var filterParams = ['file_name', 'audit_status', 'archive_type', 'sample_status'];
+            
+            filterParams.forEach(function(param) {
+                var value = urlParams.get(param);
+                if (value) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'filter_' + param; // 使用filter_前缀避免与表单字段冲突
+                    input.value = value;
+                    form.appendChild(input);
+                }
+            });
+        });
+
         // 抽检历史弹窗相关变量
         var currentSampleTaskId = null;
         var isSampleDragging = false;

@@ -609,3 +609,328 @@
 2025/12/25 13:58:23 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766642301967951800 (剩余: 0)
 2025/12/25 14:00:30 logger.go:45: [ERROR] 设备审核录像提醒定时任务已启动，将根据配置执行
 2025/12/25 14:00:30 logger.go:45: [ERROR] 定时任务已配置：每天 10:00，下次执行时间：2025-12-26 10:00:00，等待 19h59m29.6600963s
+2025/12/25 19:07:08 logger.go:45: [ERROR] 设备审核录像提醒定时任务已启动，将根据配置执行
+2025/12/25 19:07:08 logger.go:45: [ERROR] 定时任务已配置：每天 10:00，下次执行时间：2025-12-26 10:00:00，等待 14h52m51.0127618s
+2025/12/25 19:09:04 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766660944903836700 (用户ID: 1)
+2025/12/25 19:09:04 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766660944903836700 (用户ID: 1, 总数: 1)
+2025/12/25 19:09:05 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:09:19 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766660944903836700
+2025/12/25 19:09:19 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766660944903836700 (剩余: 0)
+2025/12/25 19:09:23 logger.go:45: [ERROR] 未找到日期或天数: dateStr=, daysStr=, comment=fdfdfdfdfdqe4r4
+2025/12/25 19:09:23 logger.go:57: [INFO] [EventHub] 广播任务更新事件: taskID=66, data=map[audit_comment:fdfdfdfdfdqe4r4 audit_status:未审核 is_fixed:false updated_by:admin]
+2025/12/25 19:09:23 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_updated, taskID=66
+2025/12/25 19:09:23 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_updated, taskID=66
+2025/12/25 19:09:23 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:09:23 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:09:24 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766660964323919600 (用户ID: 1)
+2025/12/25 19:09:24 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766660964323919600 (用户ID: 1, 总数: 1)
+2025/12/25 19:09:24 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:09:46 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766660964323919600
+2025/12/25 19:09:46 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766660964323919600 (剩余: 0)
+2025/12/25 19:09:46 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766660986608476600 (用户ID: 1)
+2025/12/25 19:09:46 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766660986608476600 (用户ID: 1, 总数: 1)
+2025/12/25 19:09:46 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:09:51 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766660986608476600
+2025/12/25 19:09:51 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766660986608476600 (剩余: 0)
+2025/12/25 19:09:51 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766660991602700300 (用户ID: 1)
+2025/12/25 19:09:51 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766660991602700300 (用户ID: 1, 总数: 1)
+2025/12/25 19:09:51 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:09:53 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766660991602700300
+2025/12/25 19:09:53 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766660991602700300 (剩余: 0)
+2025/12/25 19:09:54 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766660994313131000 (用户ID: 1)
+2025/12/25 19:09:54 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766660994313131000 (用户ID: 1, 总数: 1)
+2025/12/25 19:09:54 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:10:05 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766660994313131000
+2025/12/25 19:10:05 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766660994313131000 (剩余: 0)
+2025/12/25 19:10:07 logger.go:45: [ERROR] 未找到日期或天数: dateStr=, daysStr=, comment=dsdsdsdsfdfdfd
+2025/12/25 19:10:07 logger.go:57: [INFO] [EventHub] 广播任务更新事件: taskID=64, data=map[audit_comment:dsdsdsdsfdfdfd audit_status:未审核 is_fixed:false updated_by:admin]
+2025/12/25 19:10:07 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_updated, taskID=64
+2025/12/25 19:10:07 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_updated, taskID=64
+2025/12/25 19:10:07 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:10:07 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:10:09 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661009281221300 (用户ID: 1)
+2025/12/25 19:10:09 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661009281221300 (用户ID: 1, 总数: 1)
+2025/12/25 19:10:09 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:11:03 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661009281221300
+2025/12/25 19:11:03 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661009281221300 (剩余: 0)
+2025/12/25 19:11:06 logger.go:45: [ERROR] 未找到日期或天数: dateStr=, daysStr=, comment=fdfdfdfdfdqe4r4
+2025/12/25 19:11:06 logger.go:57: [INFO] [EventHub] 广播任务更新事件: taskID=66, data=map[audit_comment:fdfdfdfdfdqe4r4 audit_status:已审核待整改 is_fixed:false updated_by:admin]
+2025/12/25 19:11:06 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_updated, taskID=66
+2025/12/25 19:11:06 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_updated, taskID=66
+2025/12/25 19:11:06 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:11:06 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:11:07 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661067806351000 (用户ID: 1)
+2025/12/25 19:11:07 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661067806351000 (用户ID: 1, 总数: 1)
+2025/12/25 19:11:07 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:11:10 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661067806351000
+2025/12/25 19:11:10 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661067806351000 (剩余: 0)
+2025/12/25 19:11:10 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661070519913100 (用户ID: 1)
+2025/12/25 19:11:10 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661070519913100 (用户ID: 1, 总数: 1)
+2025/12/25 19:11:10 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:11:15 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661070519913100
+2025/12/25 19:11:15 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661070519913100 (剩余: 0)
+2025/12/25 19:11:18 logger.go:45: [ERROR] 未找到日期或天数: dateStr=, daysStr=, comment=fdfdfdfdfdqe4r4
+2025/12/25 19:11:18 logger.go:57: [INFO] [EventHub] 广播任务更新事件: taskID=66, data=map[audit_comment:fdfdfdfdfdqe4r4 audit_status:已完成 is_fixed:false updated_by:admin]
+2025/12/25 19:11:18 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_updated, taskID=66
+2025/12/25 19:11:18 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_updated, taskID=66
+2025/12/25 19:11:18 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:11:18 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:11:19 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661079577286000 (用户ID: 1)
+2025/12/25 19:11:19 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661079577286000 (用户ID: 1, 总数: 1)
+2025/12/25 19:11:19 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:11:22 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661079577286000
+2025/12/25 19:11:22 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661079577286000 (剩余: 0)
+2025/12/25 19:11:22 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661082639520600 (用户ID: 1)
+2025/12/25 19:11:22 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661082639520600 (用户ID: 1, 总数: 1)
+2025/12/25 19:11:22 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:11:32 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661082639520600
+2025/12/25 19:11:32 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661082639520600 (剩余: 0)
+2025/12/25 19:11:32 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_deleted, taskID=66
+2025/12/25 19:11:32 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_deleted, taskID=66
+2025/12/25 19:11:32 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:11:32 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:11:33 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661093883007600 (用户ID: 1)
+2025/12/25 19:11:33 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661093883007600 (用户ID: 1, 总数: 1)
+2025/12/25 19:11:33 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:11:42 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661093883007600
+2025/12/25 19:11:42 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661093883007600 (剩余: 0)
+2025/12/25 19:11:42 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_created, taskID=67
+2025/12/25 19:11:42 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_created, taskID=67
+2025/12/25 19:11:42 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:11:42 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:11:43 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661103471591300 (用户ID: 1)
+2025/12/25 19:11:43 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661103471591300 (用户ID: 1, 总数: 1)
+2025/12/25 19:11:43 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:11:53 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661103471591300
+2025/12/25 19:11:53 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661103471591300 (剩余: 0)
+2025/12/25 19:11:56 logger.go:57: [INFO] [EventHub] 广播任务更新事件: taskID=67, data=map[audit_comment: audit_status:已审核待整改 is_fixed:false updated_by:admin]
+2025/12/25 19:11:56 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_updated, taskID=67
+2025/12/25 19:11:56 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_updated, taskID=67
+2025/12/25 19:11:56 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:11:56 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:11:57 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661117804946400 (用户ID: 1)
+2025/12/25 19:11:57 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661117804946400 (用户ID: 1, 总数: 1)
+2025/12/25 19:11:57 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:12:10 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661117804946400
+2025/12/25 19:12:10 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661117804946400 (剩余: 0)
+2025/12/25 19:12:10 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661130656393800 (用户ID: 1)
+2025/12/25 19:12:10 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661130656393800 (用户ID: 1, 总数: 1)
+2025/12/25 19:12:10 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:12:12 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661130656393800
+2025/12/25 19:12:12 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661130656393800 (剩余: 0)
+2025/12/25 19:12:15 logger.go:57: [INFO] [EventHub] 广播任务更新事件: taskID=67, data=map[audit_comment: audit_status:已完成 is_fixed:false updated_by:admin]
+2025/12/25 19:12:15 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_updated, taskID=67
+2025/12/25 19:12:15 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_updated, taskID=67
+2025/12/25 19:12:15 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:12:15 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:12:16 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661136506632700 (用户ID: 1)
+2025/12/25 19:12:16 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661136506632700 (用户ID: 1, 总数: 1)
+2025/12/25 19:12:16 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:12:20 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661136506632700
+2025/12/25 19:12:20 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661136506632700 (剩余: 0)
+2025/12/25 19:12:20 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661140712739600 (用户ID: 1)
+2025/12/25 19:12:20 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661140712739600 (用户ID: 1, 总数: 1)
+2025/12/25 19:12:20 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:12:22 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661140712739600
+2025/12/25 19:12:22 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661140712739600 (剩余: 0)
+2025/12/25 19:12:25 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_sampled, taskID=67
+2025/12/25 19:12:25 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_sampled, taskID=67
+2025/12/25 19:12:25 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:12:25 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:12:25 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661145495174900 (用户ID: 1)
+2025/12/25 19:12:25 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661145495174900 (用户ID: 1, 总数: 1)
+2025/12/25 19:12:25 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:12:38 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661145495174900
+2025/12/25 19:12:38 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661145495174900 (剩余: 0)
+2025/12/25 19:12:38 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661158489996200 (用户ID: 1)
+2025/12/25 19:12:38 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661158489996200 (用户ID: 1, 总数: 1)
+2025/12/25 19:12:38 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:12:40 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661158489996200
+2025/12/25 19:12:40 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661158489996200 (剩余: 0)
+2025/12/25 19:12:43 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_sampled, taskID=67
+2025/12/25 19:12:43 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_sampled, taskID=67
+2025/12/25 19:12:43 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:12:43 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:12:43 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661163164846700 (用户ID: 1)
+2025/12/25 19:12:43 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661163164846700 (用户ID: 1, 总数: 1)
+2025/12/25 19:12:43 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:13:10 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661163164846700
+2025/12/25 19:13:10 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661163164846700 (剩余: 0)
+2025/12/25 19:13:10 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661190526947800 (用户ID: 1)
+2025/12/25 19:13:10 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661190526947800 (用户ID: 1, 总数: 1)
+2025/12/25 19:13:10 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:13:27 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661190526947800
+2025/12/25 19:13:27 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661190526947800 (剩余: 0)
+2025/12/25 19:13:27 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661207466938600 (用户ID: 1)
+2025/12/25 19:13:27 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661207466938600 (用户ID: 1, 总数: 1)
+2025/12/25 19:13:27 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:13:29 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661207466938600
+2025/12/25 19:13:29 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661207466938600 (剩余: 0)
+2025/12/25 19:13:30 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661210413586100 (用户ID: 1)
+2025/12/25 19:13:30 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661210413586100 (用户ID: 1, 总数: 1)
+2025/12/25 19:13:30 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:13:54 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661210413586100
+2025/12/25 19:13:54 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661210413586100 (剩余: 0)
+2025/12/25 19:13:56 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661236726418300 (用户ID: 1)
+2025/12/25 19:13:56 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661236726418300 (用户ID: 1, 总数: 1)
+2025/12/25 19:13:56 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:14:07 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661236726418300
+2025/12/25 19:14:07 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661236726418300 (剩余: 0)
+2025/12/25 19:14:12 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661252021584700 (用户ID: 1)
+2025/12/25 19:14:12 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661252021584700 (用户ID: 1, 总数: 1)
+2025/12/25 19:14:12 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:14:14 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661252021584700
+2025/12/25 19:14:14 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661252021584700 (剩余: 0)
+2025/12/25 19:14:22 logger.go:45: [ERROR] 未找到日期或天数: dateStr=, daysStr=, comment=dsdsdsdsfdfdfd
+2025/12/25 19:14:22 logger.go:57: [INFO] [EventHub] 广播任务更新事件: taskID=64, data=map[audit_comment:dsdsdsdsfdfdfd audit_status:已完成 is_fixed:false updated_by:admin]
+2025/12/25 19:14:22 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_updated, taskID=64
+2025/12/25 19:14:22 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_updated, taskID=64
+2025/12/25 19:14:22 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:14:22 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:14:23 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661263908495000 (用户ID: 1)
+2025/12/25 19:14:23 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661263908495000 (用户ID: 1, 总数: 1)
+2025/12/25 19:14:24 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:19:18 logger.go:45: [ERROR] 设备审核录像提醒定时任务已启动，将根据配置执行
+2025/12/25 19:19:18 logger.go:45: [ERROR] 定时任务已配置：每天 10:00，下次执行时间：2025-12-26 10:00:00，等待 14h40m41.6003006s
+2025/12/25 19:19:31 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661571836841500 (用户ID: 1)
+2025/12/25 19:19:31 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661571836841500 (用户ID: 1, 总数: 1)
+2025/12/25 19:19:31 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:19:35 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661571836841500
+2025/12/25 19:19:35 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661571836841500 (剩余: 0)
+2025/12/25 19:19:35 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_deleted, taskID=67
+2025/12/25 19:19:35 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_deleted, taskID=67
+2025/12/25 19:19:35 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:19:35 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:19:36 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661576601097200 (用户ID: 1)
+2025/12/25 19:19:36 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661576601097200 (用户ID: 1, 总数: 1)
+2025/12/25 19:19:36 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:19:43 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661576601097200
+2025/12/25 19:19:43 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661576601097200 (剩余: 0)
+2025/12/25 19:19:43 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_created, taskID=68
+2025/12/25 19:19:43 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_created, taskID=68
+2025/12/25 19:19:43 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:19:43 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:19:44 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661584593906600 (用户ID: 1)
+2025/12/25 19:19:44 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661584593906600 (用户ID: 1, 总数: 1)
+2025/12/25 19:19:44 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:19:48 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661584593906600
+2025/12/25 19:19:48 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661584593906600 (剩余: 0)
+2025/12/25 19:19:48 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661588169435300 (用户ID: 1)
+2025/12/25 19:19:48 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661588169435300 (用户ID: 1, 总数: 1)
+2025/12/25 19:19:48 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:19:50 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661588169435300
+2025/12/25 19:19:50 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661588169435300 (剩余: 0)
+2025/12/25 19:19:53 logger.go:57: [INFO] [EventHub] 广播任务更新事件: taskID=68, data=map[audit_comment: audit_status:已审核待整改 is_fixed:false updated_by:admin]
+2025/12/25 19:19:53 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_updated, taskID=68
+2025/12/25 19:19:53 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_updated, taskID=68
+2025/12/25 19:19:53 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:19:53 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:19:54 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661594754788400 (用户ID: 1)
+2025/12/25 19:19:54 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661594754788400 (用户ID: 1, 总数: 1)
+2025/12/25 19:19:54 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:19:59 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661594754788400
+2025/12/25 19:19:59 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661594754788400 (剩余: 0)
+2025/12/25 19:19:59 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661599213426500 (用户ID: 1)
+2025/12/25 19:19:59 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661599213426500 (用户ID: 1, 总数: 1)
+2025/12/25 19:19:59 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:20:03 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661599213426500
+2025/12/25 19:20:03 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661599213426500 (剩余: 0)
+2025/12/25 19:20:03 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766661603220495400 (用户ID: 1)
+2025/12/25 19:20:03 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661603220495400 (用户ID: 1, 总数: 1)
+2025/12/25 19:20:03 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送
+2025/12/25 19:20:33 logger.go:57: [INFO] [SSEHandler] 客户端断开连接: 1_1766661603220495400
+2025/12/25 19:20:33 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661603220495400 (剩余: 0)
+2025/12/25 19:20:33 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661633590476100 (用户ID: 1, 总数: 1)
+2025/12/25 19:20:33 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端已注册: 1_1766661633590476100 (用户ID: 1)
+2025/12/25 19:20:33 logger.go:57: [INFO] [CheckpointSSEHandler] 初始连接消息已发送
+2025/12/25 19:20:36 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端断开连接: 1_1766661633590476100
+2025/12/25 19:20:36 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661633590476100 (剩余: 0)
+2025/12/25 19:20:36 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端已注册: 1_1766661636303185200 (用户ID: 1)
+2025/12/25 19:20:36 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661636303185200 (用户ID: 1, 总数: 1)
+2025/12/25 19:20:36 logger.go:57: [INFO] [CheckpointSSEHandler] 初始连接消息已发送
+2025/12/25 19:23:29 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端断开连接: 1_1766661636303185200
+2025/12/25 19:23:29 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661636303185200 (剩余: 0)
+2025/12/25 19:23:30 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_created, taskID=30
+2025/12/25 19:23:30 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_created, taskID=30
+2025/12/25 19:23:30 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:23:30 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:23:31 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端已注册: 1_1766661811182598100 (用户ID: 1)
+2025/12/25 19:23:31 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661811182598100 (用户ID: 1, 总数: 1)
+2025/12/25 19:23:31 logger.go:57: [INFO] [CheckpointSSEHandler] 初始连接消息已发送
+2025/12/25 19:23:34 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端断开连接: 1_1766661811182598100
+2025/12/25 19:23:34 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661811182598100 (剩余: 0)
+2025/12/25 19:23:34 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端已注册: 1_1766661814376999600 (用户ID: 1)
+2025/12/25 19:23:34 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661814376999600 (用户ID: 1, 总数: 1)
+2025/12/25 19:23:34 logger.go:57: [INFO] [CheckpointSSEHandler] 初始连接消息已发送
+2025/12/25 19:23:36 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端断开连接: 1_1766661814376999600
+2025/12/25 19:23:36 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661814376999600 (剩余: 0)
+2025/12/25 19:23:39 logger.go:57: [INFO] [CheckpointEditHandler] 广播任务更新事件: taskID=30, audit_status=已审核待整改, audit_comment=
+2025/12/25 19:23:39 logger.go:57: [INFO] [EventHub] 广播任务更新事件: taskID=30, data=map[audit_comment: audit_status:已审核待整改 updated_by:admin]
+2025/12/25 19:23:39 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_updated, taskID=30
+2025/12/25 19:23:39 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_updated, taskID=30
+2025/12/25 19:23:39 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:23:39 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:23:40 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端已注册: 1_1766661820347379200 (用户ID: 1)
+2025/12/25 19:23:40 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661820347379200 (用户ID: 1, 总数: 1)
+2025/12/25 19:23:40 logger.go:57: [INFO] [CheckpointSSEHandler] 初始连接消息已发送
+2025/12/25 19:25:12 logger.go:45: [ERROR] 设备审核录像提醒定时任务已启动，将根据配置执行
+2025/12/25 19:25:13 logger.go:45: [ERROR] 定时任务已配置：每天 10:00，下次执行时间：2025-12-26 10:00:00，等待 14h34m46.9982276s
+2025/12/25 19:25:28 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端已注册: 1_1766661928671397800 (用户ID: 1)
+2025/12/25 19:25:28 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661928671397800 (用户ID: 1, 总数: 1)
+2025/12/25 19:25:28 logger.go:57: [INFO] [CheckpointSSEHandler] 初始连接消息已发送
+2025/12/25 19:25:32 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端断开连接: 1_1766661928671397800
+2025/12/25 19:25:32 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661928671397800 (剩余: 0)
+2025/12/25 19:25:32 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端已注册: 1_1766661932878343500 (用户ID: 1)
+2025/12/25 19:25:32 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661932878343500 (用户ID: 1, 总数: 1)
+2025/12/25 19:25:32 logger.go:57: [INFO] [CheckpointSSEHandler] 初始连接消息已发送
+2025/12/25 19:25:35 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端断开连接: 1_1766661932878343500
+2025/12/25 19:25:35 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661932878343500 (剩余: 0)
+2025/12/25 19:25:37 logger.go:57: [INFO] [CheckpointEditHandler] 广播任务更新事件: taskID=30, audit_status=未审核, audit_comment=
+2025/12/25 19:25:37 logger.go:57: [INFO] [EventHub] 广播任务更新事件: taskID=30, data=map[audit_comment: audit_status:未审核 updated_by:admin]
+2025/12/25 19:25:37 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_updated, taskID=30
+2025/12/25 19:25:37 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_updated, taskID=30
+2025/12/25 19:25:37 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:25:37 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:25:39 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端已注册: 1_1766661939216829000 (用户ID: 1)
+2025/12/25 19:25:39 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661939216829000 (用户ID: 1, 总数: 1)
+2025/12/25 19:25:39 logger.go:57: [INFO] [CheckpointSSEHandler] 初始连接消息已发送
+2025/12/25 19:25:40 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端断开连接: 1_1766661939216829000
+2025/12/25 19:25:40 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661939216829000 (剩余: 0)
+2025/12/25 19:25:41 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端已注册: 1_1766661941055416200 (用户ID: 1)
+2025/12/25 19:25:41 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661941055416200 (用户ID: 1, 总数: 1)
+2025/12/25 19:25:41 logger.go:57: [INFO] [CheckpointSSEHandler] 初始连接消息已发送
+2025/12/25 19:25:44 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端断开连接: 1_1766661941055416200
+2025/12/25 19:25:44 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661941055416200 (剩余: 0)
+2025/12/25 19:25:44 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端已注册: 1_1766661944149402700 (用户ID: 1)
+2025/12/25 19:25:44 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661944149402700 (用户ID: 1, 总数: 1)
+2025/12/25 19:25:44 logger.go:57: [INFO] [CheckpointSSEHandler] 初始连接消息已发送
+2025/12/25 19:25:45 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端断开连接: 1_1766661944149402700
+2025/12/25 19:25:45 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661944149402700 (剩余: 0)
+2025/12/25 19:25:48 logger.go:57: [INFO] [CheckpointEditHandler] 广播任务更新事件: taskID=30, audit_status=已完成, audit_comment=
+2025/12/25 19:25:48 logger.go:57: [INFO] [EventHub] 广播任务更新事件: taskID=30, data=map[audit_comment: audit_status:已完成 updated_by:admin]
+2025/12/25 19:25:48 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_updated, taskID=30
+2025/12/25 19:25:48 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_updated, taskID=30
+2025/12/25 19:25:48 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:25:48 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:25:49 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端已注册: 1_1766661949520319600 (用户ID: 1)
+2025/12/25 19:25:49 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661949520319600 (用户ID: 1, 总数: 1)
+2025/12/25 19:25:49 logger.go:57: [INFO] [CheckpointSSEHandler] 初始连接消息已发送
+2025/12/25 19:25:53 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端断开连接: 1_1766661949520319600
+2025/12/25 19:25:53 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661949520319600 (剩余: 0)
+2025/12/25 19:25:53 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端已注册: 1_1766661953661753600 (用户ID: 1)
+2025/12/25 19:25:53 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766661953661753600 (用户ID: 1, 总数: 1)
+2025/12/25 19:25:53 logger.go:57: [INFO] [CheckpointSSEHandler] 初始连接消息已发送
+2025/12/25 19:27:05 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端断开连接: 1_1766661953661753600
+2025/12/25 19:27:05 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766661953661753600 (剩余: 0)
+2025/12/25 19:27:07 logger.go:57: [INFO] [EventHub] 事件已加入广播队列: type=task_sampled, taskID=30
+2025/12/25 19:27:07 logger.go:57: [INFO] [EventHub] 开始广播事件给 0 个客户端: type=task_sampled, taskID=30
+2025/12/25 19:27:07 logger.go:57: [INFO] [EventHub] 警告: 没有活跃的客户端连接，事件将被丢弃
+2025/12/25 19:27:07 logger.go:57: [INFO] [EventHub] 事件已发送给 0/0 个客户端
+2025/12/25 19:27:08 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端已注册: 1_1766662028950852100 (用户ID: 1)
+2025/12/25 19:27:08 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766662028950852100 (用户ID: 1, 总数: 1)
+2025/12/25 19:27:09 logger.go:57: [INFO] [CheckpointSSEHandler] 初始连接消息已发送
+2025/12/25 19:27:39 logger.go:57: [INFO] [CheckpointSSEHandler] 客户端断开连接: 1_1766662028950852100
+2025/12/25 19:27:39 logger.go:57: [INFO] [EventHub] 客户端断开: 1_1766662028950852100 (剩余: 0)
+2025/12/25 19:27:39 logger.go:57: [INFO] [SSEHandler] 客户端已注册: 1_1766662059107448600 (用户ID: 1)
+2025/12/25 19:27:39 logger.go:57: [INFO] [EventHub] 客户端连接: 1_1766662059107448600 (用户ID: 1, 总数: 1)
+2025/12/25 19:27:39 logger.go:57: [INFO] [SSEHandler] 初始连接消息已发送

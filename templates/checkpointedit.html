@@ -372,24 +372,20 @@
     </div>
 
     <script>
-        // 页面加载时，将URL中的筛选条件参数添加到表单中（排除audit_status，因为它由select处理）
+        // 页面加载时，将URL中的筛选条件参数添加到表单中（使用filter_前缀避免与表单字段冲突）
         document.addEventListener('DOMContentLoaded', function() {
             var form = document.getElementById('editForm');
             var urlParams = new URLSearchParams(window.location.search);
-            var filterParams = ['file_name', 'archive_type', 'sample_status']; // 排除audit_status
+            var filterParams = ['file_name', 'audit_status', 'archive_type', 'sample_status'];
             
             filterParams.forEach(function(param) {
                 var value = urlParams.get(param);
                 if (value) {
-                    // 检查是否已存在该隐藏字段
-                    var existingInput = form.querySelector('input[name="' + param + '"]');
-                    if (!existingInput) {
-                        var input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = param;
-                        input.value = value;
-                        form.appendChild(input);
-                    }
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'filter_' + param; // 使用filter_前缀避免与表单字段冲突
+                    input.value = value;
+                    form.appendChild(input);
                 }
             });
         });

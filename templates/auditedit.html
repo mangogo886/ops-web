@@ -380,7 +380,7 @@
     </div>
 
     <script>
-        // 页面加载时，将URL中的筛选条件参数添加到表单中
+        // 页面加载时，将URL中的筛选条件参数添加到表单中（使用filter_前缀避免与表单字段冲突）
         document.addEventListener('DOMContentLoaded', function() {
             var form = document.getElementById('editForm');
             var urlParams = new URLSearchParams(window.location.search);
@@ -391,7 +391,7 @@
                 if (value) {
                     var input = document.createElement('input');
                     input.type = 'hidden';
-                    input.name = param;
+                    input.name = 'filter_' + param; // 使用filter_前缀避免与表单字段冲突
                     input.value = value;
                     form.appendChild(input);
                 }
