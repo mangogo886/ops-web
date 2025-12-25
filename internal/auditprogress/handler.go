@@ -38,6 +38,7 @@ type AuditTask struct {
 	Attachments []string // 附件列表
 	IsSingleSoldier int // 是否单兵设备：0=否，1=是
 	ArchiveType sql.NullString // 档案类型：新增、取推、补档案
+	Tag sql.NullString // 标签字段，用于搜索区分
 	// 抽检相关字段
 	IsSampled       bool   // 是否已抽检
 	LastSampledAt   string // 最后抽检时间
@@ -62,6 +63,8 @@ type PageData struct {
 	AuditStatus   string // 审核状态查询条件
 	ArchiveType   string // 建档类型查询条件
 	SampleStatus  string // 抽检状态查询条件：全部、已抽检、待整改、待抽检
+	Tag           string // 标签查询条件
+	Tab           string // 选项卡：all（全部任务）或 overdue（超时未整改）
 	CurrentPage   int
 	TotalPages    int
 	TotalCount    int    // 总记录数
@@ -90,10 +93,26 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	auditStatus := r.URL.Query().Get("audit_status") // 审核状态: 未审核, 已审核待整改, 已完成 或空
 	archiveType := r.URL.Query().Get("archive_type") // 建档类型: 新增, 取推, 补档案 或空
 	sampleStatus := r.URL.Query().Get("sample_status") // 抽检状态: 全部, 已抽检, 待整改, 待抽检 或空
+	tag := r.URL.Query().Get("tag") // 标签查询条件
+	tab := r.URL.Query().Get("tab") // 选项卡: all（全部任务）或 overdue（超时未整改）
 	taskIDStr := r.URL.Query().Get("task_id") // 任务ID，用于定位到特定任务
 	pageStr := r.URL.Query().Get("page")
 	importMsg := r.URL.Query().Get("message")
 	importCountStr := r.URL.Query().Get("count")
+
+	// 默认选项卡为"全部任务"
+	if tab == "" {
+		tab = "all"
+	}
+	// 验证tab值
+	if tab != "all" && tab != "overdue" {
+		tab = "all"
+	}
+
+	// 如果是超时未整改选项卡，默认审核状态为"已审核待整改"
+	if tab == "overdue" && auditStatus == "" {
+		auditStatus = "已审核待整改"
+	}
 
 	page, _ := strconv.Atoi(pageStr)
 	if page < 1 {
@@ -102,187 +121,36 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	importCount, _ := strconv.Atoi(importCountStr)
 
 	pageSize := 30
-	offset := (page - 1) * pageSize
 
-	// 构造查询条件
-	whereSQL := " WHERE 1=1"
-	args := []interface{}{}
-
-	if searchName != "" {
-		whereSQL += " AND file_name LIKE ?"
-		args = append(args, "%"+searchName+"%")
+	// 使用新的查询函数
+	queryOptions := QueryOptions{
+		SearchName:   searchName,
+		AuditStatus:  auditStatus,
+		ArchiveType:  archiveType,
+		SampleStatus: sampleStatus,
+		Tag:          tag,
+		Tab:          tab,
+		Page:         page,
+		PageSize:     pageSize,
 	}
 
-	// 审核状态查询
-	if auditStatus != "" {
-		// 验证审核状态值
-		validStatuses := map[string]bool{
-			"未审核":       true,
-			"已审核待整改":  true,
-			"已完成":      true,
-		}
-		if validStatuses[auditStatus] {
-			whereSQL += " AND audit_status = ?"
-			args = append(args, auditStatus)
-		}
-	}
-
-	// 建档类型查询
-	if archiveType != "" {
-		// 验证建档类型值
-		validTypes := map[string]bool{
-			"新增":   true,
-			"取推":   true,
-			"补档案": true,
-			"变更":   true,
-		}
-		if validTypes[archiveType] {
-			whereSQL += " AND archive_type = ?"
-			args = append(args, archiveType)
-		}
-	}
-
-	// 抽检状态查询
-	if sampleStatus != "" {
-		validSampleStatuses := map[string]bool{
-			"已抽检": true,
-			"待整改": true,
-			"待抽检": true,
-		}
-		if validSampleStatuses[sampleStatus] {
-			if sampleStatus == "已抽检" {
-				// 已抽检：审核状态为"已完成"，is_sampled = 1，且最近一次抽检结果不是"待整改"（包括NULL）
-				whereSQL += ` AND audit_status = '已完成' 
-					AND is_sampled = 1 
-					AND COALESCE((SELECT sample_result FROM audit_sample_records 
-						WHERE task_id = audit_tasks.id 
-						ORDER BY sampled_at DESC LIMIT 1), '') != '待整改'`
-			} else if sampleStatus == "待整改" {
-				// 待整改：审核状态为"已完成"，is_sampled = 1，且最近一次抽检结果为"待整改"
-				whereSQL += ` AND audit_status = '已完成' 
-					AND is_sampled = 1 
-					AND (SELECT sample_result FROM audit_sample_records 
-						WHERE task_id = audit_tasks.id 
-						ORDER BY sampled_at DESC LIMIT 1) = '待整改'`
-			} else if sampleStatus == "待抽检" {
-				// 待抽检：审核状态为"已完成"，is_sampled = 0 或 NULL
-				whereSQL += ` AND audit_status = '已完成' 
-					AND (is_sampled = 0 OR is_sampled IS NULL)`
-			}
-		}
-	}
-
-	// 1. 查询总记录数
-	var totalCount int
-	countSQL := "SELECT COUNT(*) FROM audit_tasks" + whereSQL
-	err := db.DBInstance.QueryRow(countSQL, args...).Scan(&totalCount)
-	if err != nil && err != sql.ErrNoRows {
-		logger.Errorf("审核进度-查询总数失败: %v, SQL: %s, Args: %v", err, countSQL, args)
-		http.Error(w, "查询总数失败: "+err.Error(), http.StatusInternalServerError)
+	queryResult, err := QueryTasks(queryOptions)
+	if err != nil {
+		logger.Errorf("审核进度-查询任务失败: %v", err)
+		http.Error(w, "查询任务失败: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// 2. 分页计算
+	taskList := queryResult.Tasks
+	totalCount := queryResult.TotalCount
+
+	// 分页计算
 	totalPages := (totalCount + pageSize - 1) / pageSize
 	if totalPages == 0 {
 		totalPages = 1
 	}
 	if page > totalPages {
 		page = totalPages
-	}
-
-	// 3. 查询列表数据（包含抽检字段）
-	querySQL := fmt.Sprintf("SELECT id, file_name, organization, import_time, audit_status, record_count, audit_comment, updated_at, is_single_soldier, archive_type, is_sampled, last_sampled_at FROM audit_tasks %s ORDER BY id DESC LIMIT ? OFFSET ?", whereSQL)
-
-	// 准备完整的参数列表
-	queryArgs := append(args, pageSize, offset)
-
-	rows, err := db.DBInstance.Query(querySQL, queryArgs...)
-	if err != nil {
-		logger.Errorf("审核进度-数据库查询失败: %v, SQL: %s, Args: %v", err, querySQL, queryArgs)
-		http.Error(w, "数据库查询失败: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var taskList []AuditTask
-	var taskIDs []int
-	for rows.Next() {
-		var task AuditTask
-		var importTimeRaw, updatedAtRaw, lastSampledAtRaw sql.NullString
-		var isSampled int
-		err = rows.Scan(
-			&task.ID,
-			&task.FileName,
-			&task.Organization,
-			&importTimeRaw,
-			&task.AuditStatus,
-			&task.RecordCount,
-			&task.AuditComment,
-			&updatedAtRaw,
-			&task.IsSingleSoldier,
-			&task.ArchiveType,
-			&isSampled,
-			&lastSampledAtRaw,
-		)
-
-		if err != nil {
-			logger.Errorf("设备审核进度-数据库扫描错误: %v, taskID: %d", err, task.ID)
-			continue
-		}
-
-		// 格式化时间字段为 YYYY-MM-DD HH:mm
-		task.ImportTime = formatDateTime(importTimeRaw.String)
-		task.UpdatedAt = formatDateTime(updatedAtRaw.String)
-		task.IsSampled = isSampled == 1
-		if lastSampledAtRaw.Valid {
-			task.LastSampledAt = formatDateTime(lastSampledAtRaw.String)
-		}
-
-		taskIDs = append(taskIDs, task.ID)
-		taskList = append(taskList, task)
-	}
-
-	// 检查遍历过程中的错误
-	if err = rows.Err(); err != nil {
-		logger.Errorf("审核进度-数据遍历失败: %v", err)
-		http.Error(w, "数据遍历失败: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// 批量获取抽检信息
-	sampleInfoMap, err := BatchGetSampleInfo(taskIDs)
-	if err != nil {
-		logger.Errorf("批量获取抽检信息失败: %v", err)
-		// 不阻断流程，继续执行
-		sampleInfoMap = make(map[int]*SampleInfo)
-	}
-
-	// 填充抽检信息到任务列表
-	for i := range taskList {
-		if info, ok := sampleInfoMap[taskList[i].ID]; ok {
-			taskList[i].IsSampled = info.IsSampled
-			taskList[i].LastSampledAt = info.LastSampledAt
-			taskList[i].SampledBy = info.SampledBy
-			taskList[i].SampleCount = info.SampleCount
-			taskList[i].LastSampleResult = info.LastSampleResult
-		}
-	}
-
-	// 批量获取提醒数量
-	reminderCountMap := make(map[int]int)
-	for _, taskID := range taskIDs {
-		count, err := GetReminderCountByTaskID(taskID)
-		if err == nil {
-			reminderCountMap[taskID] = count
-		}
-	}
-
-	// 填充提醒数量到任务列表
-	for i := range taskList {
-		if count, ok := reminderCountMap[taskList[i].ID]; ok {
-			taskList[i].ReminderCount = count
-		}
 	}
 
 	// 为每个任务查询附件列表
@@ -310,6 +178,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	if sampleStatus != "" {
 		queryValues.Set("sample_status", sampleStatus)
+	}
+	if tag != "" {
+		queryValues.Set("tag", tag)
+	}
+	if tab != "" && tab != "all" {
+		queryValues.Set("tab", tab)
 	}
 	query := queryValues.Encode()
 	
@@ -352,6 +226,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if sampleStatus != "" {
 		queryParams["sample_status"] = sampleStatus
 	}
+	if tag != "" {
+		queryParams["tag"] = tag
+	}
+	if tab != "" && tab != "all" {
+		queryParams["tab"] = tab
+	}
 
 	// 记录查询操作日志（如果有查询条件）
 	currentUser := auth.GetCurrentUser(r)
@@ -375,6 +255,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				action += fmt.Sprintf("，建档类型：%s", archiveType)
 			} else {
 				action += fmt.Sprintf("（建档类型：%s", archiveType)
+				hasCondition = true
+			}
+		}
+		if tag != "" {
+			if hasCondition {
+				action += fmt.Sprintf("，标签：%s", tag)
+			} else {
+				action += fmt.Sprintf("（标签：%s", tag)
 				hasCondition = true
 			}
 		}
@@ -425,28 +313,37 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				var taskExists int
 				err = db.DBInstance.QueryRow("SELECT COUNT(*) FROM audit_tasks WHERE id = ?", taskID).Scan(&taskExists)
 				if err == nil && taskExists > 0 {
-					// 计算任务所在的页面（按ID排序，找到任务的位置）
+					// 重新构建查询条件来计算任务位置
+					whereSQL, args := BuildWhereClause(queryOptions)
+					// 计算任务所在的页面
 					var taskPosition int
-					err = db.DBInstance.QueryRow(`
+					positionSQL := fmt.Sprintf(`
 						SELECT COUNT(*) + 1 FROM audit_tasks 
-						WHERE id < ? AND (`+strings.TrimPrefix(whereSQL, " WHERE 1=1")+`)`,
-						append([]interface{}{taskID}, args...)...).Scan(&taskPosition)
+						WHERE id < ? %s`, whereSQL)
+					positionArgs := append([]interface{}{taskID}, args...)
+					err = db.DBInstance.QueryRow(positionSQL, positionArgs...).Scan(&taskPosition)
 					if err == nil {
 						taskPage = (taskPosition-1)/pageSize + 1
 						if taskPage != page {
 							// 重定向到任务所在的页面
 							redirectURL := fmt.Sprintf("/audit/progress?page=%d&task_id=%d", taskPage, taskID)
 							if searchName != "" {
-								redirectURL += "&file_name=" + searchName
+								redirectURL += "&file_name=" + url.QueryEscape(searchName)
 							}
 							if auditStatus != "" {
-								redirectURL += "&audit_status=" + auditStatus
+								redirectURL += "&audit_status=" + url.QueryEscape(auditStatus)
 							}
 							if archiveType != "" {
-								redirectURL += "&archive_type=" + archiveType
+								redirectURL += "&archive_type=" + url.QueryEscape(archiveType)
 							}
 							if sampleStatus != "" {
-								redirectURL += "&sample_status=" + sampleStatus
+								redirectURL += "&sample_status=" + url.QueryEscape(sampleStatus)
+							}
+							if tag != "" {
+								redirectURL += "&tag=" + url.QueryEscape(tag)
+							}
+							if tab != "" && tab != "all" {
+								redirectURL += "&tab=" + tab
 							}
 							http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 							return
@@ -468,6 +365,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		AuditStatus:   auditStatus,
 		ArchiveType:   archiveType,
 		SampleStatus:  sampleStatus,
+		Tag:           tag,
+		Tab:           tab,
 		CurrentPage:   page,
 		TotalPages:    totalPages,
 		TotalCount:    totalCount,
@@ -603,6 +502,9 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "档案类型值无效，必须是：新增、取推、补档案、变更", http.StatusBadRequest)
 		return
 	}
+	
+	// 获取标签字段（选填）
+	tag := strings.TrimSpace(r.FormValue("tag"))
 
 	// 开始事务
 	tx, err := db.DBInstance.Begin()
@@ -612,8 +514,14 @@ func ImportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 1. 创建审核任务记录
-	insertTaskSQL := `INSERT INTO audit_tasks (file_name, organization, import_time, audit_status, is_single_soldier, archive_type) VALUES (?, ?, ?, ?, ?, ?)`
-	result, err := tx.Exec(insertTaskSQL, fileNameWithoutExt, organization, time.Now(), "未审核", isSingleSoldier, archiveType)
+	insertTaskSQL := `INSERT INTO audit_tasks (file_name, organization, import_time, audit_status, is_single_soldier, archive_type, tag) VALUES (?, ?, ?, ?, ?, ?, ?)`
+	var tagValue interface{}
+	if tag != "" {
+		tagValue = tag
+	} else {
+		tagValue = nil
+	}
+	result, err := tx.Exec(insertTaskSQL, fileNameWithoutExt, organization, time.Now(), "未审核", isSingleSoldier, archiveType, tagValue)
 	if err != nil {
 		tx.Rollback()
 		logger.Errorf("审核进度-创建审核任务失败: %v, SQL: %s", err, insertTaskSQL)
@@ -920,42 +828,14 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 获取筛选条件参数（用于重定向）
-		// 优先从filter_前缀的参数获取（来自URL的原始筛选条件），避免与表单中的audit_status字段冲突
-		searchName := r.FormValue("filter_file_name")
-		if searchName == "" {
-			searchName = r.FormValue("file_name")
+		// 获取来源tab参数（用于判断返回哪个页面）
+		sourceTab := r.FormValue("filter_tab")
+		if sourceTab == "" {
+			sourceTab = r.URL.Query().Get("tab")
 		}
-		auditStatusParam := r.FormValue("filter_audit_status")
-		if auditStatusParam == "" {
-			// 如果表单中没有filter_audit_status，尝试从URL查询参数获取（兼容直接访问的情况）
-			auditStatusParam = r.URL.Query().Get("audit_status")
-		}
-		archiveType := r.FormValue("filter_archive_type")
-		if archiveType == "" {
-			archiveType = r.FormValue("archive_type")
-		}
-		sampleStatus := r.FormValue("filter_sample_status")
-		if sampleStatus == "" {
-			sampleStatus = r.FormValue("sample_status")
-		}
-		
-		// 构建查询参数字符串
-		queryValues := url.Values{}
-		if searchName != "" {
-			queryValues.Set("file_name", searchName)
-		}
-		if auditStatusParam != "" {
-			queryValues.Set("audit_status", auditStatusParam)
-		}
-		if archiveType != "" {
-			queryValues.Set("archive_type", archiveType)
-		}
-		if sampleStatus != "" {
-			queryValues.Set("sample_status", sampleStatus)
-		}
-		query := queryValues.Encode()
-		if query != "" {
-			query = "&" + query
+		// 验证tab值
+		if sourceTab != "all" && sourceTab != "overdue" {
+			sourceTab = "all"
 		}
 
 		auditComment := strings.TrimSpace(r.FormValue("audit_comment"))
@@ -1124,7 +1004,85 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 
-		redirectURL := "/audit/progress?message=EditSuccess" + query
+		// 判断任务是否仍满足超时未整改条件
+		// 条件：审核状态为"已审核待整改"且最后更新时间超过15天
+		var isStillOverdue bool
+		if auditStatus == "已审核待整改" {
+			// 查询更新后的updated_at，判断是否仍超过15天
+			var updatedAtRaw sql.NullString
+			checkOverdueSQL := "SELECT updated_at FROM audit_tasks WHERE id = ?"
+			err = db.DBInstance.QueryRow(checkOverdueSQL, taskID).Scan(&updatedAtRaw)
+			if err == nil && updatedAtRaw.Valid {
+				// 使用DATEDIFF判断是否超过15天
+				var daysDiff int
+				daysSQL := "SELECT DATEDIFF(NOW(), ?)"
+				err = db.DBInstance.QueryRow(daysSQL, updatedAtRaw.String).Scan(&daysDiff)
+				if err == nil && daysDiff > 15 {
+					isStillOverdue = true
+				}
+			}
+		}
+
+		// 构建返回URL
+		// 如果来源是超时未整改页面，且任务仍满足超时条件，返回超时未整改页面
+		// 否则返回全部任务页面（不保留审核状态筛选）
+		var redirectQuery string
+		
+		if sourceTab == "overdue" && isStillOverdue {
+			// 仍满足超时条件，返回超时未整改页面
+			// 超时未整改页面不需要审核状态筛选（已固定为"已审核待整改"）
+			// 只保留其他筛选条件
+			queryValues := url.Values{}
+			// 获取其他筛选条件
+			searchName := r.FormValue("filter_file_name")
+			if searchName == "" {
+				searchName = r.FormValue("file_name")
+			}
+			archiveType := r.FormValue("filter_archive_type")
+			if archiveType == "" {
+				archiveType = r.FormValue("archive_type")
+			}
+			if searchName != "" {
+				queryValues.Set("file_name", searchName)
+			}
+			if archiveType != "" {
+				queryValues.Set("archive_type", archiveType)
+			}
+			queryValues.Set("tab", "overdue")
+			redirectQuery = queryValues.Encode()
+		} else {
+			// 不再满足超时条件或来源是全部任务页面，返回全部任务页面
+			// 全部任务页面不保留审核状态筛选（因为任务已不在超时未整改页面）
+			queryValues := url.Values{}
+			searchName := r.FormValue("filter_file_name")
+			if searchName == "" {
+				searchName = r.FormValue("file_name")
+			}
+			archiveType := r.FormValue("filter_archive_type")
+			if archiveType == "" {
+				archiveType = r.FormValue("archive_type")
+			}
+			sampleStatus := r.FormValue("filter_sample_status")
+			if sampleStatus == "" {
+				sampleStatus = r.FormValue("sample_status")
+			}
+			if searchName != "" {
+				queryValues.Set("file_name", searchName)
+			}
+			if archiveType != "" {
+				queryValues.Set("archive_type", archiveType)
+			}
+			if sampleStatus != "" {
+				queryValues.Set("sample_status", sampleStatus)
+			}
+			// 不设置tab参数（默认全部任务）或不设置audit_status
+			redirectQuery = queryValues.Encode()
+		}
+
+		redirectURL := "/audit/progress?message=EditSuccess"
+		if redirectQuery != "" {
+			redirectURL += "&" + redirectQuery
+		}
 		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 		return
 	}
@@ -1755,12 +1713,43 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if auditStatus == "" {
 		auditStatus = r.URL.Query().Get("audit_status")
 	}
+	archiveType := r.FormValue("archive_type")
+	if archiveType == "" {
+		archiveType = r.URL.Query().Get("archive_type")
+	}
+	sampleStatus := r.FormValue("sample_status")
+	if sampleStatus == "" {
+		sampleStatus = r.URL.Query().Get("sample_status")
+	}
+	tag := r.FormValue("tag")
+	if tag == "" {
+		tag = r.URL.Query().Get("tag")
+	}
+	tab := r.FormValue("tab")
+	if tab == "" {
+		tab = r.URL.Query().Get("tab")
+	}
+	if tab == "" {
+		tab = "all"
+	}
 	redirectURL := "/audit/progress?message=DeleteSuccess"
 	if searchName != "" {
-		redirectURL += "&file_name=" + searchName
+		redirectURL += "&file_name=" + url.QueryEscape(searchName)
 	}
 	if auditStatus != "" {
-		redirectURL += "&audit_status=" + auditStatus
+		redirectURL += "&audit_status=" + url.QueryEscape(auditStatus)
+	}
+	if archiveType != "" {
+		redirectURL += "&archive_type=" + url.QueryEscape(archiveType)
+	}
+	if sampleStatus != "" {
+		redirectURL += "&sample_status=" + url.QueryEscape(sampleStatus)
+	}
+	if tag != "" {
+		redirectURL += "&tag=" + url.QueryEscape(tag)
+	}
+	if tab != "" && tab != "all" {
+		redirectURL += "&tab=" + url.QueryEscape(tab)
 	}
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
@@ -2195,6 +2184,7 @@ func SampleHandler(w http.ResponseWriter, r *http.Request) {
 		auditStatus := allParams.Get("audit_status")
 		archiveType := allParams.Get("archive_type")
 		sampleStatus := allParams.Get("sample_status")
+		tab := allParams.Get("tab") // 获取tab参数
 		
 		// 构建查询参数字符串
 		queryValues := url.Values{}
@@ -2209,6 +2199,9 @@ func SampleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		if sampleStatus != "" {
 			queryValues.Set("sample_status", sampleStatus)
+		}
+		if tab != "" && tab != "all" {
+			queryValues.Set("tab", tab)
 		}
 		query := queryValues.Encode()
 		
@@ -2269,43 +2262,14 @@ func SampleHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// 获取筛选条件参数（用于重定向）
-		// 优先从filter_前缀的参数获取（来自URL的原始筛选条件），避免与表单字段冲突
-		searchName := r.FormValue("filter_file_name")
-		if searchName == "" {
-			searchName = r.FormValue("file_name")
+		// 获取来源tab参数（用于判断返回哪个页面）
+		sourceTab := r.FormValue("filter_tab")
+		if sourceTab == "" {
+			sourceTab = r.URL.Query().Get("tab")
 		}
-		auditStatusParam := r.FormValue("filter_audit_status")
-		if auditStatusParam == "" {
-			// 如果表单中没有filter_audit_status，尝试从URL查询参数获取（兼容直接访问的情况）
-			auditStatusParam = r.URL.Query().Get("audit_status")
-		}
-		archiveType := r.FormValue("filter_archive_type")
-		if archiveType == "" {
-			archiveType = r.FormValue("archive_type")
-		}
-		sampleStatus := r.FormValue("filter_sample_status")
-		if sampleStatus == "" {
-			sampleStatus = r.FormValue("sample_status")
-		}
-		
-		// 构建查询参数字符串
-		queryValues := url.Values{}
-		if searchName != "" {
-			queryValues.Set("file_name", searchName)
-		}
-		if auditStatusParam != "" {
-			queryValues.Set("audit_status", auditStatusParam)
-		}
-		if archiveType != "" {
-			queryValues.Set("archive_type", archiveType)
-		}
-		if sampleStatus != "" {
-			queryValues.Set("sample_status", sampleStatus)
-		}
-		query := queryValues.Encode()
-		if query != "" {
-			query = "&" + query
+		// 验证tab值
+		if sourceTab != "all" && sourceTab != "overdue" {
+			sourceTab = "all"
 		}
 
 		// 验证任务是否存在且状态为"已完成"
@@ -2366,7 +2330,37 @@ func SampleHandler(w http.ResponseWriter, r *http.Request) {
 			"sampled_by":     currentUser.Username,
 		})
 
-		redirectURL := "/audit/progress?message=SampleSuccess" + query
+		// 构建返回URL
+		// 抽检只针对"已完成"状态的任务，所以应该返回全部任务页面（超时未整改页面只显示"已审核待整改"状态）
+		queryValues := url.Values{}
+		searchName := r.FormValue("filter_file_name")
+		if searchName == "" {
+			searchName = r.FormValue("file_name")
+		}
+		archiveType := r.FormValue("filter_archive_type")
+		if archiveType == "" {
+			archiveType = r.FormValue("archive_type")
+		}
+		sampleStatus := r.FormValue("filter_sample_status")
+		if sampleStatus == "" {
+			sampleStatus = r.FormValue("sample_status")
+		}
+		if searchName != "" {
+			queryValues.Set("file_name", searchName)
+		}
+		if archiveType != "" {
+			queryValues.Set("archive_type", archiveType)
+		}
+		if sampleStatus != "" {
+			queryValues.Set("sample_status", sampleStatus)
+		}
+		// 不设置tab参数（默认全部任务）和audit_status（因为抽检后任务仍在全部任务页面）
+		redirectQuery := queryValues.Encode()
+
+		redirectURL := "/audit/progress?message=SampleSuccess"
+		if redirectQuery != "" {
+			redirectURL += "&" + redirectQuery
+		}
 		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 		return
 	}

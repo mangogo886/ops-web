@@ -384,7 +384,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             var form = document.getElementById('editForm');
             var urlParams = new URLSearchParams(window.location.search);
-            var filterParams = ['file_name', 'audit_status', 'archive_type', 'sample_status'];
+            var filterParams = ['file_name', 'audit_status', 'archive_type', 'sample_status', 'tab'];
             
             filterParams.forEach(function(param) {
                 var value = urlParams.get(param);

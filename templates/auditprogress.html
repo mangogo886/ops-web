@@ -875,19 +875,39 @@ function confirmDelete(taskId, fileName) {
     <div class="content">
     <h1>设备审核进度</h1>
     
+    <!-- 选项卡 -->
+    <div style="background: white; padding: 0; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; border-bottom: 2px solid #ecf0f1;">
+        <a href="/audit/progress?tab=all{{if .Query}}&{{.Query}}{{end}}" 
+           style="flex: 1; padding: 15px 20px; text-align: center; text-decoration: none; color: #555; border-bottom: 3px solid {{if eq .Tab "all"}}#3498db{{else}}transparent{{end}}; background-color: {{if eq .Tab "all"}}#f8f9fa{{else}}white{{end}}; font-weight: {{if eq .Tab "all"}}600{{else}}normal{{end}}; transition: all 0.3s;">
+            全部任务
+        </a>
+        <a href="/audit/progress?tab=overdue{{if .Query}}&{{.Query}}{{end}}" 
+           style="flex: 1; padding: 15px 20px; text-align: center; text-decoration: none; color: #555; border-bottom: 3px solid {{if eq .Tab "overdue"}}#e74c3c{{else}}transparent{{end}}; background-color: {{if eq .Tab "overdue"}}#f8f9fa{{else}}white{{end}}; font-weight: {{if eq .Tab "overdue"}}600{{else}}normal{{end}}; transition: all 0.3s;">
+            超时未整改
+        </a>
+    </div>
+    
     <!-- 搜索和操作区 -->
     <div class="search-container">
         <!-- 第一行：查询功能 -->
         <div class="search-row">
             <form class="search-form" action="/audit/progress" method="GET" style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+            <input type="hidden" name="tab" value="{{.Tab}}">
             <input type="text" name="file_name" placeholder="输入档案名称" value="{{.SearchName}}">
             <label style="font-weight: 600; color: #2c3e50; margin: 0 5px;">审核状态:</label>
+            {{if eq .Tab "overdue"}}
+            <select name="audit_status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; background-color: #f5f5f5; color: #666;" disabled title="超时未整改页面仅显示已审核待整改状态">
+                <option value="已审核待整改" selected>已审核待整改</option>
+            </select>
+            <input type="hidden" name="audit_status" value="已审核待整改">
+            {{else}}
             <select name="audit_status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                 <option value="">全部</option>
                 <option value="未审核" {{if eq .AuditStatus "未审核"}}selected{{end}}>未审核</option>
                 <option value="已审核待整改" {{if eq .AuditStatus "已审核待整改"}}selected{{end}}>已审核待整改</option>
                 <option value="已完成" {{if eq .AuditStatus "已完成"}}selected{{end}}>已完成</option>
             </select>
+            {{end}}
             <label style="font-weight: 600; color: #2c3e50; margin: 0 5px;">建档类型:</label>
             <select name="archive_type" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                 <option value="">全部</option>
@@ -896,16 +916,25 @@ function confirmDelete(taskId, fileName) {
                 <option value="补档案" {{if eq .ArchiveType "补档案"}}selected{{end}}>补档案</option>
                 <option value="变更" {{if eq .ArchiveType "变更"}}selected{{end}}>变更</option>
             </select>
+            <label style="font-weight: 600; color: #2c3e50; margin: 0 5px;">标签:</label>
+            <input type="text" name="tag" value="{{.Tag}}" placeholder="标签搜索" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
             <label style="font-weight: 600; color: #2c3e50; margin: 0 5px;">抽检状态:</label>
+            {{if eq .Tab "overdue"}}
+            <select name="sample_status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; background-color: #f5f5f5; color: #666;" disabled title="超时未整改页面不适用抽检状态筛选">
+                <option value="">全部</option>
+            </select>
+            <input type="hidden" name="sample_status" value="">
+            {{else}}
             <select name="sample_status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                 <option value="">全部</option>
                 <option value="已抽检" {{if eq .SampleStatus "已抽检"}}selected{{end}}>已抽检</option>
                 <option value="待整改" {{if eq .SampleStatus "待整改"}}selected{{end}}>待整改</option>
                 <option value="待抽检" {{if eq .SampleStatus "待抽检"}}selected{{end}}>待抽检</option>
             </select>
+            {{end}}
             <button type="submit">查询</button>
-            {{if or .SearchName .AuditStatus .ArchiveType .SampleStatus}}
-            <a href="/audit/progress" style="padding: 8px 15px; background-color: #95a5a6; color: white; text-decoration: none; border-radius: 4px;">清除</a>
+            {{if or .SearchName .AuditStatus .ArchiveType .SampleStatus .Tag}}
+            <a href="/audit/progress?tab={{.Tab}}" style="padding: 8px 15px; background-color: #95a5a6; color: white; text-decoration: none; border-radius: 4px;">清除</a>
             {{end}}
             </form>
         </div>
@@ -929,6 +958,8 @@ function confirmDelete(taskId, fileName) {
                     <option value="补档案">补档案</option>
                     <option value="变更">变更</option>
                 </select>
+                <label>标签:</label>
+                <input type="text" id="tag" name="tag" placeholder="选填，用于搜索区分" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                 <input type="file" id="upload_file" name="upload_file" accept=".xlsx,.xls" required>
                 <button type="submit" class="action-btn import-btn">导入</button>
             </form>

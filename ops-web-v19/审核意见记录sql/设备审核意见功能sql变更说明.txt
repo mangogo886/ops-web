@@ -1,0 +1,24 @@
+已创建的文件
+1. deploy/create-audit-history-table.sql - 完整版本（包含外键约束）
+包含：
+创建 audit_audit_history 表
+自动删除已存在的外键约束（如果存在）
+添加外键约束 audit_audit_history_ibfk_1
+默认 task_id 为 int(11)
+2. deploy/alter-audit-history-table.sql - 字段类型修改脚本
+用于处理 audit_tasks.id 类型不匹配：
+自动检测 audit_tasks.id 的类型
+如果是 bigint(20) unsigned，将 task_id 修改为相同类型
+如果是 int(11)，保持不变
+3. deploy/add-audit-history-foreign-key.sql - 单独添加外键约束
+用于单独添加外键约束：
+删除已存在的外键约束（如果存在）
+添加外键约束
+执行顺序
+情况1：如果 audit_tasks.id 是 int(11)
+-- 直接执行create-audit-history-table.sql
+情况2：如果 audit_tasks.id 是 bigint(20) unsigned
+-- 1. 先创建表create-audit-history-table.sql-- 2. 修改字段类型alter-audit-history-table.sql-- 3. 重新添加外键约束（如果之前添加失败）add-audit-history-foreign-key.sql
+表结构说明
+CREATE TABLE `audit_audit_history` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `task_id` int(11) NOT NULL COMMENT '审核任务ID，关联audit_tasks表',  `audit_comment` text DEFAULT NULL COMMENT '审核意见（历史记录）',  `audit_status` varchar(50) NOT NULL COMMENT '审核状态（历史记录）',  `auditor` varchar(50) NOT NULL COMMENT '审核人用户名',  `audit_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '审核时间',  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',  PRIMARY KEY (`id`),  KEY `task_id` (`task_id`),  KEY `audit_time` (`audit_time`),  KEY `auditor` (`auditor`),  CONSTRAINT `audit_audit_history_ibfk_1`     FOREIGN KEY (`task_id`)     REFERENCES `audit_tasks` (`id`)     ON DELETE RESTRICT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='设备审核意见历史记录表';
+所有脚本已创建，包含外键约束和类型匹配处理。

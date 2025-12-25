@@ -1,0 +1,21 @@
+已创建所需的 SQL 脚本。总结如下：
+已创建的 SQL 脚本
+create-checkpoint-audit-history-table.sql - 创建卡口审核意见历史记录表
+默认 task_id 为 int(11)
+包含执行顺序说明
+alter-checkpoint-audit-history-table.sql - 修改字段类型以匹配 checkpoint_tasks.id
+自动检测 checkpoint_tasks.id 的类型
+如果是 bigint(20) unsigned，将 task_id 修改为相同类型
+如果是 int(11)，保持不变
+add-checkpoint-audit-history-foreign-key.sql - 添加外键约束
+添加 checkpoint_audit_history.task_id 到 checkpoint_tasks.id 的外键约束
+使用 ON DELETE RESTRICT 防止误删
+执行顺序
+执行 create-checkpoint-audit-history-table.sql 创建表
+执行 alter-checkpoint-audit-history-table.sql 调整字段类型（如需要）
+执行 add-checkpoint-audit-history-foreign-key.sql 添加外键约束
+说明
+checkpoint_tasks 表无需修改，已存在且结构完整
+脚本会自动检测并处理 checkpoint_tasks.id 的类型差异（int(11) 或 bigint(20) unsigned）
+所有脚本都包含错误检查和说明
+所有必要的 ALTER 语句已添加到 deploy 目录。

@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}} - 档案审核管理</title>
+    <style>
+    body { 
+        margin: 0; 
+        padding: 0; 
+        font-family: "Microsoft YaHei", sans-serif; 
+        display: flex; 
+        height: 100vh; 
+    }
+    
+    /* 左侧导航 */
+    .sidebar { 
+        width: 180px; 
+        background-color: #2c3e50; 
+        color: white; 
+        display: flex; 
+        flex-direction: column; 
+    }
+    .sidebar h3 { 
+        text-align: center; 
+        padding: 20px 0; 
+        border-bottom: 1px solid #34495e; 
+        margin: 0; 
+    }
+    .menu-item { 
+        padding: 15px 20px; 
+        color: #ecf0f1; 
+        text-decoration: none; 
+        display: block; 
+        border-bottom: 1px solid #34495e; 
+    }
+    .menu-item:hover { 
+        background-color: #34495e; 
+    }
+    .menu-item.active { 
+        background-color: #3498db; 
+    }
+    .submenu-item {
+        padding: 12px 20px 12px 40px;
+        font-size: 14px;
+        color: #bdc3c7;
+        text-decoration: none;
+        display: block;
+        border-bottom: 1px solid #34495e;
+    }
+    .submenu-item:hover {
+        background-color: #34495e;
+    }
+    .submenu-item.active {
+        background-color: #2980b9;
+        color: white;
+    }
+    
+    .content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+    }
+    
+    h1 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+    }
+
+    /* 搜索和操作区 */
+    .search-container { 
+        background: white; 
+        padding: 20px; 
+        border-radius: 5px; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+        margin-bottom: 20px; 
+        display: flex; 
+        flex-direction: column;
+        gap: 15px;
+    }
+    .search-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+    }
+    .search-row-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        min-width: 0;
+    }
+    .search-row-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    .search-form { 
+        display: flex; 
+        align-items: center; 
+        gap: 8px;
+        flex: 1;
+        min-width: 0;
+    }
+    .search-form input, 
+    .search-form button, 
+    .action-btn { 
+        padding: 8px 15px; 
+        border-radius: 4px; 
+        border: 1px solid #ddd;
+    }
+    .search-form input { 
+        width: 150px; 
+        flex-shrink: 0;
+    }
+    .search-form select {
+        flex-shrink: 0;
+    }
+    .search-form label {
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+    
+    .search-form button { 
+        background-color: #3498db; 
+        color: white; 
+        border: none; 
+        cursor: pointer; 
+    }
+    .search-form button:hover { 
+        background-color: #2980b9; 
+    }
+
+    /* 导入表单样式 */
+    .import-form {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        flex-shrink: 1;
+        min-width: 0;
+    }
+    .import-form label {
+        font-weight: 600;
+        color: #2c3e50;
+        white-space: nowrap;
+        font-size: 13px;
+    }
+    .import-form input[type="text"] {
+        padding: 6px 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        width: 120px;
+        font-size: 13px;
+    }
+    .import-form input[type="file"] {
+        padding: 6px;
+        font-size: 13px;
+        width: 140px;
+    }
+    .import-form input[type="checkbox"] {
+        margin-right: 3px;
+    }
+    .import-form select {
+        padding: 6px 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 13px;
+        width: 90px;
+    }
+    .action-btn {
+        padding: 6px 12px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+    .required {
+        color: #e74c3c;
+    }
+
+    /* 导入/导出按钮样式 */
+    .action-btn { 
+        text-decoration: none; 
+        color: white; 
+        border: none; 
+        cursor: pointer;
+        display: inline-block;
+        text-align: center;
+        padding: 8px 15px;
+        border-radius: 4px;
+    }
+    .import-btn { 
+        background-color: #f39c12; 
+    }
+    .import-btn:hover { 
+        background-color: #e67e22; 
+    }
+    .export-btn {
+        background-color: #27ae60;
+    }
+    .export-btn:hover {
+        background-color: #229954;
+    }
+    .template-btn { 
+        background-color: #3498db; 
+    }
+    .template-btn:hover { 
+        background-color: #2980b9; 
+    }
+
+    /* 表格 */
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        background: white; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+    }
+    th, td { 
+        padding: 12px 15px; 
+        text-align: left; 
+        border-bottom: 1px solid #eee; 
+        font-size: 14px; 
+    }
+    th { 
+        background-color: #f8f9fa; 
+        font-weight: 600; 
+        color: #2c3e50;
+    }
+    tr:hover { 
+        background-color: #f1f1f1; 
+    }
+
+    /* 审核状态样式 */
+    .status-pending {
+        color: #f39c12;
+        font-weight: 600;
+    }
+    .status-reviewing {
+        color: #3498db;
+        font-weight: 600;
+    }
+    .status-completed {
+        color: #27ae60;
+        font-weight: 600;
+    }
+
+    /* 抽检状态样式 */
+    .sample-status {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 8px;
+    }
+    .sample-status.pending {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    .sample-status.completed {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .sample-status.need-fix {
+        background-color: #f4e4bc;
+        color: #8b6914;
+        border: 1px solid #d4a574;
+    }
+    .sample-btn {
+        color: #16a085;
+        text-decoration: none;
+        margin-right: 10px;
+    }
+    .sample-btn:hover {
+        color: #138d75;
+        text-decoration: underline;
+    }
+    .sample-history-btn {
+        color: #8e44ad;
+        text-decoration: none;
+        margin-right: 10px;
+        font-size: 12px;
+    }
+    .sample-history-btn:hover {
+        color: #7d3c98;
+        text-decoration: underline;
+    }
+
+    /* 操作下拉菜单样式 */
+    .action-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+    .action-dropdown-btn {
+        padding: 6px 12px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .action-dropdown-btn:hover {
+        background-color: #2980b9;
+    }
+    /* 在按钮和菜单之间创建一个不可见的连接区域，避免鼠标移动时离开悬停区域 */
+    .action-dropdown::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        right: 0;
+        width: 100%;
+        height: 8px;
+        z-index: 1001;
+        background: transparent;
+    }
+    .action-dropdown-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: calc(100% - 2px);
+        background-color: white;
+        min-width: 140px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 4px;
+        z-index: 1000;
+        padding: 4px 0;
+        border: 1px solid #ddd;
+    }
+    /* CSS悬停作为备用，JavaScript会控制显示/隐藏 */
+    .action-dropdown:hover .action-dropdown-menu {
+        display: block;
+    }
+    .action-dropdown-item {
+        display: block;
+        padding: 8px 16px;
+        color: #333;
+        text-decoration: none;
+        font-size: 13px;
+        white-space: nowrap;
+        transition: background-color 0.2s;
+    }
+    .action-dropdown-item:hover {
+        background-color: #f5f5f5;
+        color: #2c3e50;
+    }
+    .action-dropdown-item.detail {
+        color: #3498db;
+    }
+    .action-dropdown-item.edit {
+        color: #27ae60;
+    }
+    .action-dropdown-item.sample {
+        color: #16a085;
+    }
+    .action-dropdown-item.upload {
+        color: #9b59b6;
+    }
+    .action-dropdown-item.delete {
+        color: #e74c3c;
+    }
+    .action-dropdown-divider {
+        height: 1px;
+        background-color: #eee;
+        margin: 4px 0;
+    }
+
+    /* 抽检历史弹窗样式 */
+    .history-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+    }
+    .history-modal-content {
+        position: absolute;
+        background-color: #fefefe;
+        border: 1px solid #888;
+        border-radius: 5px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        width: 800px;
+        height: 600px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        resize: both;
+        overflow: hidden;
+        min-width: 600px;
+        min-height: 400px;
+    }
+    .history-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        border-bottom: 1px solid #ddd;
+        background-color: #2c3e50;
+        color: white;
+        cursor: move;
+        flex-shrink: 0;
+    }
+    .history-modal-header h3 {
+        margin: 0;
+        color: white;
+    }
+    .history-modal-close {
+        color: #aaa;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        line-height: 1;
+    }
+    .history-modal-close:hover,
+    .history-modal-close:focus {
+        color: white;
+    }
+    .history-modal-body {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background-color: #f5f6fa;
+    }
+    .history-item {
+        background: white;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        margin-bottom: 15px;
+        padding: 15px;
+        border-left: 4px solid #3498db;
+    }
+    .history-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #ecf0f1;
+    }
+    .history-item-time {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 14px;
+    }
+    .history-item-meta {
+        display: flex;
+        gap: 15px;
+        font-size: 13px;
+        color: #7f8c8d;
+    }
+    .history-item-status {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .history-item-status.通过 {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .history-item-status.不通过 {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    .history-item-status.待整改 {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .history-item-comment {
+        color: #555;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        margin-top: 10px;
+    }
+    .history-item-comment:empty::before {
+        content: "（无抽检意见）";
+        color: #95a5a6;
+        font-style: italic;
+    }
+    .history-loading {
+        text-align: center;
+        padding: 40px;
+        color: #7f8c8d;
+    }
+    .history-empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: #95a5a6;
+        font-size: 16px;
+    }
+
+    /* 档案类型标识 */
+    .archive-type-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-left: 6px;
+        line-height: 1.2;
+    }
+    .archive-type-new {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .archive-type-take {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    .archive-type-supplement {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+    .archive-type-change {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    /* 单兵设备标识 */
+    .single-soldier-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: #e74c3c;
+        border-radius: 50%;
+        margin-left: 6px;
+        vertical-align: middle;
+    }
+
+    /* 分页 */
+    .pagination { 
+        margin-top: 20px; 
+        display: flex; 
+        justify-content: flex-end; 
+        align-items: center; 
+    }
+    .page-btn { 
+        padding: 5px 15px; 
+        border: 1px solid #ddd; 
+        background: white; 
+        text-decoration: none; 
+        color: #333; 
+        margin-left: 5px; 
+        border-radius: 4px; 
+    }
+    .page-btn:hover { 
+        background-color: #f8f9fa; 
+    }
+    .page-info {
+        margin-right: 15px;
+        color: #666;
+    }
+
+    /* 上传模态框 */
+    .upload-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+    }
+    .upload-modal-content {
+        background-color: #fefefe;
+        margin: 10% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 500px;
+        border-radius: 5px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .upload-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #ddd;
+    }
+    .upload-modal-header h3 {
+        margin: 0;
+        color: #2c3e50;
+    }
+    .close {
+        color: #aaa;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .close:hover,
+    .close:focus {
+        color: #000;
+    }
+    .upload-form-group {
+        margin-bottom: 15px;
+    }
+    .upload-form-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #2c3e50;
+        font-weight: 600;
+    }
+    .upload-form-group input[type="file"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .upload-form-actions {
+        text-align: right;
+        margin-top: 20px;
+    }
+    .upload-btn {
+        padding: 8px 20px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-left: 10px;
+    }
+    .upload-btn:hover {
+        background-color: #2980b9;
+    }
+    .upload-btn-cancel {
+        background-color: #95a5a6;
+    }
+    .upload-btn-cancel:hover {
+        background-color: #7f8c8d;
+    }
+
+    /* 附件标识样式 */
+    .attachment-icon {
+        display: inline-block;
+        margin-left: 8px;
+        cursor: pointer;
+        position: relative;
+        color: #3498db;
+        font-size: 16px;
+    }
+    .attachment-icon:hover {
+        color: #2980b9;
+    }
+    .attachment-tooltip {
+        display: none;
+        position: absolute;
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        padding: 10px;
+        min-width: 200px;
+        max-width: 400px;
+        z-index: 1000;
+        top: 100%;
+        left: 0;
+        margin-top: 0;
+        pointer-events: auto;
+    }
+    .attachment-tooltip.show {
+        display: block;
+    }
+    .attachment-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    .attachment-list li {
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .attachment-list li:last-child {
+        border-bottom: none;
+    }
+    .attachment-list a {
+        color: #3498db;
+        text-decoration: none;
+        word-break: break-all;
+    }
+    .attachment-list a:hover {
+        text-decoration: underline;
+        color: #2980b9;
+    }
+    .attachment-header {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 8px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #ddd;
+    }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 从 Go 模板中获取传递的参数
+    var msg = '{{.ImportMessage}}';
+    var count = {{.ImportCount}};
+    var highlightTaskID = {{.HighlightTaskID}};
+
+    if (msg === 'ImportSuccess' && count > 0) {
+        alert('导入成功！共导入 ' + count + ' 条数据。');
+        
+        // 清除 URL 中的参数，防止刷新重复弹窗
+        if (window.history.replaceState) {
+            var url = new URL(window.location.href);
+            url.searchParams.delete('message');
+            url.searchParams.delete('count');
+            window.history.replaceState({path:url.href}, '', url.href);
+        }
+    }
+    
+    if (msg === 'EditSuccess') {
+        alert('审核意见保存成功！');
+        
+        // 清除 URL 中的参数，防止刷新重复弹窗
+        if (window.history.replaceState) {
+            var url = new URL(window.location.href);
+            url.searchParams.delete('message');
+            window.history.replaceState({path:url.href}, '', url.href);
+        }
+    }
+
+    // 如果URL中有task_id参数，自动滚动到对应的任务行并高亮
+    if (highlightTaskID > 0) {
+        var taskRow = document.getElementById('task-' + highlightTaskID);
+        if (taskRow) {
+            // 延迟一下，确保页面已完全渲染
+            setTimeout(function() {
+                taskRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // 3秒后移除高亮背景色
+                setTimeout(function() {
+                    taskRow.style.backgroundColor = '';
+                    taskRow.style.borderLeft = '';
+                }, 3000);
+            }, 100);
+        }
+    }
+    
+    if (msg === 'DeleteSuccess') {
+        alert('档案删除成功！');
+        
+        // 清除 URL 中的参数，防止刷新重复弹窗
+        if (window.history.replaceState) {
+            var url = new URL(window.location.href);
+            url.searchParams.delete('message');
+            window.history.replaceState({path:url.href}, '', url.href);
+        }
+    }
+
+    // 验证导入表单
+    var importForm = document.getElementById('importForm');
+    if (importForm) {
+        importForm.addEventListener('submit', function(e) {
+            var organization = document.getElementById('organization').value.trim();
+            var archiveType = document.getElementById('archive_type').value;
+            var fileInput = document.getElementById('upload_file');
+            
+            if (organization === '') {
+                alert('机构名称不能为空！');
+                e.preventDefault();
+                return false;
+            }
+            
+            if (archiveType === '') {
+                alert('请选择档案类型！');
+                e.preventDefault();
+                return false;
+            }
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('请选择要导入的Excel文件！');
+                e.preventDefault();
+                return false;
+            }
+            
+            return true;
+        });
+    }
+});
+
+function getStatusClass(status) {
+    var statusMap = {
+        '待审核': 'status-pending',
+        '已审核待整改': 'status-reviewing',
+        '已完成': 'status-completed'
+    };
+    return statusMap[status] || '';
+}
+
+// 确认删除档案
+function confirmDelete(taskId, fileName) {
+    if (confirm('确定要删除档案"' + fileName + '"吗？\n\n此操作将同时删除该档案的所有明细记录，且不可恢复！')) {
+        // 创建表单提交删除请求
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/audit/progress/delete';
+        
+        // 添加task_id参数
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'task_id';
+        input.value = taskId;
+        form.appendChild(input);
+        
+        // 保留查询参数
+        var searchName = new URLSearchParams(window.location.search).get('file_name');
+        if (searchName) {
+            var searchInput = document.createElement('input');
+            searchInput.type = 'hidden';
+            searchInput.name = 'file_name';
+            searchInput.value = searchName;
+            form.appendChild(searchInput);
+        }
+        var auditStatus = new URLSearchParams(window.location.search).get('audit_status');
+        if (auditStatus) {
+            var statusInput = document.createElement('input');
+            statusInput.type = 'hidden';
+            statusInput.name = 'audit_status';
+            statusInput.value = auditStatus;
+            form.appendChild(statusInput);
+        }
+        var archiveType = new URLSearchParams(window.location.search).get('archive_type');
+        if (archiveType) {
+            var archiveTypeInput = document.createElement('input');
+            archiveTypeInput.type = 'hidden';
+            archiveTypeInput.name = 'archive_type';
+            archiveTypeInput.value = archiveType;
+            form.appendChild(archiveTypeInput);
+        }
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+</head>
+<body>
+    <div class="sidebar">
+        <h3>档案审核管理</h3>
+        <a href="/stats" class="menu-item {{if eq .ActiveMenu "stats"}}active{{end}}">统计信息</a>
+        <a href="/device/filelist" class="menu-item {{if eq .ActiveMenu "filelist"}}active{{end}}">建档明细</a>
+        <a href="/device/filelist" class="submenu-item {{if eq .SubMenu "device_filelist"}}active{{end}}">设备建档明细</a>
+        <a href="/checkpoint/filelist" class="submenu-item {{if eq .SubMenu "checkpoint_filelist"}}active{{end}}">卡口建档明细</a>
+        <a href="/audit" class="menu-item {{if eq .ActiveMenu "audit"}}active{{end}}">档案审核</a>
+        <a href="/audit/progress" class="submenu-item {{if eq .SubMenu "audit_progress"}}active{{end}}">设备审核进度</a>
+        <a href="/audit/progress/video-reminders" class="submenu-item {{if eq .SubMenu "video_reminders"}}active{{end}}">录像天数不足提醒</a>
+        <a href="/checkpoint/progress" class="submenu-item {{if eq .SubMenu "checkpoint_progress"}}active{{end}}">卡口审核进度</a>
+        <a href="/audit/statistics" class="submenu-item {{if eq .SubMenu "audit_statistics"}}active{{end}}">月度建档数据</a>
+        <a href="/users" class="menu-item {{if eq .ActiveMenu "settings"}}active{{end}}">系统设置</a>
+        <a href="/users" class="submenu-item {{if eq .SubMenu "users"}}active{{end}}">用户信息</a>
+        <a href="/permission" class="submenu-item {{if eq .SubMenu "permission"}}active{{end}}">权限设置</a>
+        <a href="/taskconfig" class="submenu-item {{if eq .SubMenu "task_config"}}active{{end}}">任务配置</a>
+        <a href="/logs" class="submenu-item {{if eq .SubMenu "logs"}}active{{end}}">操作日志</a>
+    </div>
+
+    <div class="content">
+    <h1>设备审核进度</h1>
+    
+    <!-- 选项卡 -->
+    <div style="background: white; padding: 0; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; border-bottom: 2px solid #ecf0f1;">
+        <a href="/audit/progress?tab=all{{if .Query}}&{{.Query}}{{end}}" 
+           style="flex: 1; padding: 15px 20px; text-align: center; text-decoration: none; color: #555; border-bottom: 3px solid {{if eq .Tab "all"}}#3498db{{else}}transparent{{end}}; background-color: {{if eq .Tab "all"}}#f8f9fa{{else}}white{{end}}; font-weight: {{if eq .Tab "all"}}600{{else}}normal{{end}}; transition: all 0.3s;">
+            全部任务
+        </a>
+        <a href="/audit/progress?tab=overdue{{if .Query}}&{{.Query}}{{end}}" 
+           style="flex: 1; padding: 15px 20px; text-align: center; text-decoration: none; color: #555; border-bottom: 3px solid {{if eq .Tab "overdue"}}#e74c3c{{else}}transparent{{end}}; background-color: {{if eq .Tab "overdue"}}#f8f9fa{{else}}white{{end}}; font-weight: {{if eq .Tab "overdue"}}600{{else}}normal{{end}}; transition: all 0.3s;">
+            超时未整改
+        </a>
+    </div>
+    
+    <!-- 搜索和操作区 -->
+    <div class="search-container">
+        <!-- 第一行：查询功能 -->
+        <div class="search-row">
+            <form class="search-form" action="/audit/progress" method="GET" style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+            <input type="hidden" name="tab" value="{{.Tab}}">
+            <input type="text" name="file_name" placeholder="输入档案名称" value="{{.SearchName}}">
+            <label style="font-weight: 600; color: #2c3e50; margin: 0 5px;">审核状态:</label>
+            {{if eq .Tab "overdue"}}
+            <select name="audit_status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; background-color: #f5f5f5; color: #666;" disabled title="超时未整改页面仅显示已审核待整改状态">
+                <option value="已审核待整改" selected>已审核待整改</option>
+            </select>
+            <input type="hidden" name="audit_status" value="已审核待整改">
+            {{else}}
+            <select name="audit_status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                <option value="">全部</option>
+                <option value="未审核" {{if eq .AuditStatus "未审核"}}selected{{end}}>未审核</option>
+                <option value="已审核待整改" {{if eq .AuditStatus "已审核待整改"}}selected{{end}}>已审核待整改</option>
+                <option value="已完成" {{if eq .AuditStatus "已完成"}}selected{{end}}>已完成</option>
+            </select>
+            {{end}}
+            <label style="font-weight: 600; color: #2c3e50; margin: 0 5px;">建档类型:</label>
+            <select name="archive_type" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                <option value="">全部</option>
+                <option value="新增" {{if eq .ArchiveType "新增"}}selected{{end}}>新增</option>
+                <option value="取推" {{if eq .ArchiveType "取推"}}selected{{end}}>取推</option>
+                <option value="补档案" {{if eq .ArchiveType "补档案"}}selected{{end}}>补档案</option>
+                <option value="变更" {{if eq .ArchiveType "变更"}}selected{{end}}>变更</option>
+            </select>
+            <label style="font-weight: 600; color: #2c3e50; margin: 0 5px;">标签:</label>
+            <input type="text" name="tag" value="{{.Tag}}" placeholder="标签搜索" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+            <label style="font-weight: 600; color: #2c3e50; margin: 0 5px;">抽检状态:</label>
+            {{if eq .Tab "overdue"}}
+            <select name="sample_status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; background-color: #f5f5f5; color: #666;" disabled title="超时未整改页面不适用抽检状态筛选">
+                <option value="">全部</option>
+            </select>
+            <input type="hidden" name="sample_status" value="">
+            {{else}}
+            <select name="sample_status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                <option value="">全部</option>
+                <option value="已抽检" {{if eq .SampleStatus "已抽检"}}selected{{end}}>已抽检</option>
+                <option value="待整改" {{if eq .SampleStatus "待整改"}}selected{{end}}>待整改</option>
+                <option value="待抽检" {{if eq .SampleStatus "待抽检"}}selected{{end}}>待抽检</option>
+            </select>
+            {{end}}
+            <button type="submit">查询</button>
+            {{if or .SearchName .AuditStatus .ArchiveType .SampleStatus .Tag}}
+            <a href="/audit/progress?tab={{.Tab}}" style="padding: 8px 15px; background-color: #95a5a6; color: white; text-decoration: none; border-radius: 4px;">清除</a>
+            {{end}}
+            </form>
+        </div>
+
+        <!-- 第二行：导入功能 -->
+        {{if .CanImport}}
+        <div class="search-row" style="display: flex; align-items: center; gap: 8px;">
+            <a href="/audit/progress/download-template" class="action-btn template-btn" style="white-space: nowrap; flex-shrink: 0;">下载模板</a>
+            <form id="importForm" class="import-form" action="/audit/progress/import" method="POST" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 6px; padding: 8px; background: #f8f9fa; border-radius: 4px; flex: 1; min-width: 0;">
+                <label>机构<span class="required">*</span>:</label>
+                <input type="text" id="organization" name="organization" placeholder="机构名称" required>
+                <label style="white-space: nowrap;">
+                    <input type="checkbox" id="is_single_soldier" name="is_single_soldier" value="1">
+                    单兵设备
+                </label>
+                <label>类型<span class="required">*</span>:</label>
+                <select id="archive_type" name="archive_type" required>
+                    <option value="">请选择</option>
+                    <option value="新增">新增</option>
+                    <option value="取推">取推</option>
+                    <option value="补档案">补档案</option>
+                    <option value="变更">变更</option>
+                </select>
+                <label>标签:</label>
+                <input type="text" id="tag" name="tag" placeholder="选填，用于搜索区分" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                <input type="file" id="upload_file" name="upload_file" accept=".xlsx,.xls" required>
+                <button type="submit" class="action-btn import-btn">导入</button>
+            </form>
+        </div>
+        {{end}}
+
+    <!-- 数据表格 -->
+    <table>
+        <thead>
+            <tr>
+                    <th>序号</th>
+                    <th>档案名称</th>
+                    <th>审核状态</th>
+                    <th>抽检状态</th>
+                    <th>审核意见</th>
+                    <th>审核时间</th>
+                    <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{if .List}}
+                {{range $index, $task := .List}}
+                <tr id="task-{{$task.ID}}" data-task-id="{{$task.ID}}" {{if eq $.HighlightTaskID $task.ID}}style="background-color: #fff3cd; border-left: 4px solid #ffc107;"{{end}}>
+                    <td>{{$task.ID}}</td>
+                    <td>{{$task.FileName}}</td>
+                    <td>
+                        <span class="{{if eq $task.AuditStatus "未审核"}}status-pending{{else if eq $task.AuditStatus "已审核待整改"}}status-reviewing{{else if eq $task.AuditStatus "已完成"}}status-completed{{end}}">
+                            {{$task.AuditStatus}}
+                        </span>
+                        {{if gt $task.ReminderCount 0}}
+                        <span style="display: inline-block; margin-left: 8px; padding: 2px 8px; background-color: #e74c3c; color: white; border-radius: 10px; font-size: 11px; font-weight: 600;" title="有{{$task.ReminderCount}}个录像提醒">
+                            ⚠️ {{$task.ReminderCount}}
+                        </span>
+                        {{end}}
+                        {{if $task.ArchiveType.Valid}}
+                            {{if eq $task.ArchiveType.String "新增"}}
+                            <span class="archive-type-badge archive-type-new">新</span>
+                            {{else if eq $task.ArchiveType.String "取推"}}
+                            <span class="archive-type-badge archive-type-take">取</span>
+                            {{else if eq $task.ArchiveType.String "补档案"}}
+                            <span class="archive-type-badge archive-type-supplement">补</span>
+                            {{else if eq $task.ArchiveType.String "变更"}}
+                            <span class="archive-type-badge archive-type-change">变</span>
+                            {{end}}
+                        {{end}}
+                        {{if eq $task.IsSingleSoldier 1}}
+                        <span class="single-soldier-dot" title="单兵设备"></span>
+                        {{end}}
+                        <span style="margin-left: 8px; color: #666; font-size: 12px;">({{$task.RecordCount}}条)</span>
+                        {{if $task.Attachments}}
+                        <span class="attachment-icon" title="有附件" onmouseenter="showAttachmentTooltip(this)" onmouseleave="hideAttachmentTooltip(this)">
+                            📘
+                            <div class="attachment-tooltip" onmouseenter="showAttachmentTooltip(this.parentElement)" onmouseleave="hideAttachmentTooltip(this.parentElement)">
+                                <div class="attachment-header">附件列表</div>
+                                <ul class="attachment-list">
+                                    {{range $task.Attachments}}
+                                    <li>
+                                        <a href="#" onclick="downloadAttachment({{$task.ID}}, '{{.}}'); return false;" target="_blank">{{.}}</a>
+                                    </li>
+                                    {{end}}
+                                </ul>
+                            </div>
+                        </span>
+                        {{end}}
+                    </td>
+                    <td>
+                        {{if eq $task.AuditStatus "已完成"}}
+                            {{if $task.IsSampled}}
+                                {{if eq $task.LastSampleResult "待整改"}}
+                                <span class="sample-status need-fix" title="抽检人：{{$task.SampledBy}}&#10;最近一次抽检时间：{{$task.LastSampledAt}}&#10;抽检次数：{{$task.SampleCount}}次&#10;最近一次抽检结果：{{$task.LastSampleResult}}">
+                                    待整改{{if gt $task.SampleCount 1}}({{$task.SampleCount}}){{end}}
+                                </span>
+                                {{else}}
+                                <span class="sample-status completed" title="抽检人：{{$task.SampledBy}}&#10;最近一次抽检时间：{{$task.LastSampledAt}}&#10;抽检次数：{{$task.SampleCount}}次&#10;最近一次抽检结果：{{if $task.LastSampleResult}}{{$task.LastSampleResult}}{{else}}通过{{end}}">
+                                    已抽检{{if gt $task.SampleCount 1}}({{$task.SampleCount}}){{end}}
+                                </span>
+                                {{end}}
+                            {{else}}
+                                <span class="sample-status pending">待抽检</span>
+                            {{end}}
+                        {{else}}
+                            <span style="color: #999;">-</span>
+                        {{end}}
+                    </td>
+                    <td>
+                        {{if $task.AuditComment.Valid}}
+                            {{$task.AuditComment.String}}
+                        {{else}}
+                            <span style="color: #999;">-</span>
+                        {{end}}
+                    </td>
+                    <td>{{$task.UpdatedAt}}</td>
+                    <td>
+                        <div class="action-dropdown">
+                            <a href="#" class="action-dropdown-btn">操作 ▼</a>
+                            <div class="action-dropdown-menu">
+                                <a href="{{$task.DetailURL}}" class="action-dropdown-item detail">查看明细</a>
+                                <a href="{{$task.EditURL}}" class="action-dropdown-item edit">编辑</a>
+                                {{if eq $task.AuditStatus "已完成"}}
+                                <a href="{{$task.SampleURL}}" class="action-dropdown-item sample">抽检</a>
+                                {{end}}
+                                <a href="#" onclick="openUploadModal({{$task.ID}}, '{{$task.FileName}}'); return false;" class="action-dropdown-item upload">上传文件</a>
+                                {{if $.CanDelete}}
+                                <div class="action-dropdown-divider"></div>
+                                <a href="#" onclick="confirmDelete({{$task.ID}}, '{{$task.FileName}}'); return false;" class="action-dropdown-item delete">删除</a>
+                                {{end}}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {{end}}
+            {{else}}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: #999; padding: 40px;">
+                        暂无数据
+                    </td>
+                </tr>
+            {{end}}
+        </tbody>
+    </table>
+
+    <!-- 分页 -->
+    <div class="pagination">
+        {{if gt .TotalCount 0}}
+        <span class="page-info">显示第 {{.StartRecord}}-{{.EndRecord}} 条，共 {{.TotalCount}} 条记录 | 第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
+        {{else}}
+        <span class="page-info">暂无记录</span>
+        {{end}}
+        {{if gt .TotalPages 1}}
+            {{if gt .CurrentPage .FirstPage}}
+            <a href="/audit/progress?page={{.FirstPage}}{{if ne .Query ""}}&{{.Query}}{{end}}" class="page-btn">首页</a>
+            {{end}}
+            {{if .HasPrev}}
+            <a href="/audit/progress?page={{.PrevPage}}{{if ne .Query ""}}&{{.Query}}{{end}}" class="page-btn">上一页</a>
+            {{end}}
+            {{if .HasNext}}
+            <a href="/audit/progress?page={{.NextPage}}{{if ne .Query ""}}&{{.Query}}{{end}}" class="page-btn">下一页</a>
+            {{end}}
+            {{if lt .CurrentPage .LastPage}}
+            <a href="/audit/progress?page={{.LastPage}}{{if ne .Query ""}}&{{.Query}}{{end}}" class="page-btn">最后一页</a>
+            {{end}}
+        {{end}}
+    </div>
+    </div>
+
+    <!-- 上传文件模态框 -->
+    <div id="uploadModal" class="upload-modal">
+        <div class="upload-modal-content">
+            <div class="upload-modal-header">
+                <h3>上传文件</h3>
+                <span class="close" onclick="closeUploadModal()">&times;</span>
+            </div>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <input type="hidden" id="uploadTaskId" name="task_id" value="">
+                <div class="upload-form-group">
+                    <label>档案名称：</label>
+                    <div id="uploadFileName" style="color: #666; margin-bottom: 10px;"></div>
+                </div>
+                <div class="upload-form-group">
+                    <label>上传类型：</label>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: inline-flex; align-items: center; margin-right: 20px; cursor: pointer;">
+                            <input type="radio" name="uploadType" value="file" id="uploadTypeFile" checked onchange="switchUploadType()" style="margin-right: 5px;">
+                            <span>上传文件</span>
+                        </label>
+                        <label style="display: inline-flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="uploadType" value="directory" id="uploadTypeDirectory" onchange="switchUploadType()" style="margin-right: 5px;">
+                            <span>上传目录</span>
+                        </label>
+                    </div>
+                    <label for="uploadFileInput" id="uploadFileLabel">选择文件：</label>
+                    <input type="file" id="uploadFileInput" name="upload_file" multiple required>
+                    <div style="font-size: 12px; color: #666; margin-top: 5px;" id="uploadTypeHint">
+                        支持选择单个或多个文件（最多20个文件，总大小不超过200MB）
+                    </div>
+                </div>
+                <div id="uploadFileInfo" style="margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 4px; display: none;">
+                    <div style="font-size: 13px; color: #333; margin-bottom: 5px;"><strong>已选择：</strong></div>
+                    <div id="fileList" style="font-size: 12px; color: #666; max-height: 100px; overflow-y: auto;"></div>
+                    <div id="fileSizeInfo" style="font-size: 12px; color: #666; margin-top: 5px;"></div>
+                </div>
+                <div id="uploadProgress" style="display: none; margin: 10px 0;">
+                    <div style="font-size: 13px; color: #333; margin-bottom: 5px;"><strong>上传进度：</strong></div>
+                    <div style="background: #e0e0e0; border-radius: 4px; height: 20px; position: relative; overflow: hidden;">
+                        <div id="progressBar" style="background: #3498db; height: 100%; width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px;"></div>
+                    </div>
+                    <div id="progressText" style="font-size: 12px; color: #666; margin-top: 5px; text-align: center;"></div>
+                </div>
+                <div class="upload-form-actions">
+                    <button type="button" class="upload-btn upload-btn-cancel" onclick="closeUploadModal()">取消</button>
+                    <button type="submit" class="upload-btn" id="uploadSubmitBtn">上传</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    </div>
+
+    <script>
+    // 切换上传类型
+    function switchUploadType() {
+        var fileInput = document.getElementById('uploadFileInput');
+        var fileLabel = document.getElementById('uploadFileLabel');
+        var typeHint = document.getElementById('uploadTypeHint');
+        var uploadTypeFile = document.getElementById('uploadTypeFile');
+        
+        // 清空当前选择
+        fileInput.value = '';
+        document.getElementById('uploadFileInfo').style.display = 'none';
+        
+        if (uploadTypeFile.checked) {
+            // 文件模式：移除 webkitdirectory，保留 multiple
+            fileInput.removeAttribute('webkitdirectory');
+            fileInput.setAttribute('multiple', 'multiple');
+            fileLabel.textContent = '选择文件：';
+            typeHint.textContent = '支持选择单个或多个文件（最多20个文件，总大小不超过200MB）';
+        } else {
+            // 目录模式：添加 webkitdirectory
+            fileInput.setAttribute('webkitdirectory', 'webkitdirectory');
+            fileInput.setAttribute('multiple', 'multiple');
+            fileLabel.textContent = '选择目录：';
+            typeHint.textContent = '支持选择整个目录上传（最多20个文件，总大小不超过200MB）';
+        }
+    }
+
+    // 打开上传模态框
+    function openUploadModal(taskId, fileName) {
+        document.getElementById('uploadTaskId').value = taskId;
+        document.getElementById('uploadFileName').textContent = fileName;
+        document.getElementById('uploadModal').style.display = 'block';
+        document.getElementById('uploadFileInput').value = '';
+        document.getElementById('uploadFileInfo').style.display = 'none';
+        document.getElementById('uploadProgress').style.display = 'none';
+        document.getElementById('fileList').innerHTML = '';
+        document.getElementById('fileSizeInfo').textContent = '';
+        // 重置为文件模式
+        document.getElementById('uploadTypeFile').checked = true;
+        switchUploadType();
+    }
+
+    // 文件选择变化时显示文件信息
+    document.getElementById('uploadFileInput').addEventListener('change', function(e) {
+        var files = e.target.files;
+        var fileInfoDiv = document.getElementById('uploadFileInfo');
+        var fileListDiv = document.getElementById('fileList');
+        var fileSizeInfoDiv = document.getElementById('fileSizeInfo');
+        
+        if (files.length === 0) {
+            fileInfoDiv.style.display = 'none';
+            return;
+        }
+
+        // 检查文件数量限制
+        if (files.length > 20) {
+            alert('文件数量超过限制，最多允许上传20个文件，当前选择了' + files.length + '个');
+            e.target.value = '';
+            fileInfoDiv.style.display = 'none';
+            return;
+        }
+
+        // 计算总大小
+        var totalSize = 0;
+        var fileList = [];
+        for (var i = 0; i < files.length; i++) {
+            totalSize += files[i].size;
+            fileList.push(files[i].name + ' (' + formatFileSize(files[i].size) + ')');
+        }
+
+        // 检查总大小限制（200MB）
+        var maxSize = 200 * 1024 * 1024; // 200MB
+        if (totalSize > maxSize) {
+            alert('总文件大小超过限制，最大允许200MB，当前总大小为' + formatFileSize(totalSize));
+            e.target.value = '';
+            fileInfoDiv.style.display = 'none';
+            return;
+        }
+
+        // 显示文件信息
+        fileListDiv.innerHTML = fileList.join('<br>');
+        fileSizeInfoDiv.textContent = '共 ' + files.length + ' 个文件，总大小：' + formatFileSize(totalSize);
+        fileInfoDiv.style.display = 'block';
+    });
+
+    // 格式化文件大小
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        var k = 1024;
+        var sizes = ['B', 'KB', 'MB', 'GB'];
+        var i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    // 关闭上传模态框
+    function closeUploadModal() {
+        document.getElementById('uploadModal').style.display = 'none';
+        document.getElementById('uploadForm').reset();
+    }
+
+    // 点击模态框外部关闭
+    window.onclick = function(event) {
+        var modal = document.getElementById('uploadModal');
+        if (event.target == modal) {
+            closeUploadModal();
+        }
+    }
+
+    // 处理上传表单提交
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        var formData = new FormData(this);
+        var uploadBtn = document.getElementById('uploadSubmitBtn');
+        var originalText = uploadBtn.textContent;
+        var progressDiv = document.getElementById('uploadProgress');
+        var progressBar = document.getElementById('progressBar');
+        var progressText = document.getElementById('progressText');
+        
+        // 获取文件数量
+        var files = document.getElementById('uploadFileInput').files;
+        var totalFiles = files.length;
+        
+        // 禁用按钮并显示上传中
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = '上传中...';
+        
+        // 显示进度条
+        progressDiv.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        progressText.textContent = '准备上传...';
+        
+        // 使用XMLHttpRequest以便显示上传进度
+        var xhr = new XMLHttpRequest();
+        
+        // 上传进度事件
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                var percentComplete = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percentComplete + '%';
+                progressBar.textContent = percentComplete + '%';
+                progressText.textContent = '上传中：' + percentComplete + '% (' + formatFileSize(e.loaded) + ' / ' + formatFileSize(e.total) + ')';
+            }
+        });
+        
+        // 请求完成事件
+        xhr.addEventListener('load', function() {
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        progressBar.style.width = '100%';
+                        progressBar.textContent = '100%';
+                        progressText.textContent = '上传完成！成功：' + (data.successCount || totalFiles) + '/' + (data.total || totalFiles);
+                        
+                        var message = '上传完成！\n成功：' + (data.successCount || totalFiles) + '/' + (data.total || totalFiles);
+                        if (data.failedCount && data.failedCount > 0) {
+                            message += '\n失败：' + data.failedCount;
+                            if (data.failedFiles && data.failedFiles.length > 0) {
+                                message += '\n失败文件：' + data.failedFiles.join(', ');
+                            }
+                        }
+                        
+                        setTimeout(function() {
+                            alert(message);
+                            closeUploadModal();
+                            // 刷新页面
+                            window.location.reload();
+                        }, 500);
+                    } else {
+                        progressText.textContent = '上传失败：' + (data.message || '未知错误');
+                        alert('上传失败：' + (data.message || '未知错误'));
+                        uploadBtn.disabled = false;
+                        uploadBtn.textContent = originalText;
+                    }
+                } catch (e) {
+                    progressText.textContent = '解析响应失败';
+                    alert('上传失败：解析响应失败');
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = originalText;
+                }
+            } else {
+                try {
+                    var errorData = JSON.parse(xhr.responseText);
+                    progressText.textContent = '上传失败：' + (errorData.message || '未知错误');
+                    alert('上传失败：' + (errorData.message || '未知错误'));
+                } catch (e) {
+                    progressText.textContent = '上传失败，状态码：' + xhr.status;
+                    alert('上传失败，状态码：' + xhr.status);
+                }
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = originalText;
+            }
+        });
+        
+        // 请求错误事件
+        xhr.addEventListener('error', function() {
+            progressText.textContent = '网络错误';
+            alert('上传失败：网络错误');
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = originalText;
+        });
+        
+        // 请求中止事件
+        xhr.addEventListener('abort', function() {
+            progressText.textContent = '上传已取消';
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = originalText;
+        });
+        
+        // 发送请求
+        xhr.open('POST', '/audit/progress/upload');
+        xhr.send(formData);
+    });
+
+    // 下载附件
+    function downloadAttachment(taskId, fileName) {
+        var url = '/audit/progress/download?task_id=' + taskId + '&file_name=' + encodeURIComponent(fileName);
+        window.open(url, '_blank');
+    }
+
+    // 附件悬停窗口管理
+    var attachmentTooltipTimers = {};
+
+    // 显示附件悬停窗口
+    function showAttachmentTooltip(container) {
+        // 获取容器ID或使用唯一标识
+        var containerId = container.getAttribute('data-tooltip-id');
+        if (!containerId) {
+            containerId = 'tooltip_' + Math.random().toString(36).substr(2, 9);
+            container.setAttribute('data-tooltip-id', containerId);
+        }
+        
+        // 清除该容器的隐藏定时器
+        if (attachmentTooltipTimers[containerId]) {
+            clearTimeout(attachmentTooltipTimers[containerId]);
+            delete attachmentTooltipTimers[containerId];
+        }
+        
+        var tooltip = container.querySelector('.attachment-tooltip');
+        if (tooltip) {
+            tooltip.classList.add('show');
+        }
+    }
+
+    // 隐藏附件悬停窗口
+    function hideAttachmentTooltip(container) {
+        var containerId = container.getAttribute('data-tooltip-id');
+        if (!containerId) {
+            containerId = 'tooltip_' + Math.random().toString(36).substr(2, 9);
+            container.setAttribute('data-tooltip-id', containerId);
+        }
+        
+        var tooltip = container.querySelector('.attachment-tooltip');
+        if (tooltip) {
+            // 添加小延迟，允许鼠标移动到tooltip上
+            attachmentTooltipTimers[containerId] = setTimeout(function() {
+                tooltip.classList.remove('show');
+                delete attachmentTooltipTimers[containerId];
+            }, 150);
+        }
+    }
+    </script>
+
+    <!-- 抽检历史弹窗 -->
+    <div id="sampleHistoryModal" class="history-modal">
+        <div class="history-modal-content" id="sampleHistoryModalContent">
+            <div class="history-modal-header" id="sampleHistoryModalHeader">
+                <h3>抽检历史记录</h3>
+                <span class="history-modal-close" onclick="closeSampleHistoryModal()">&times;</span>
+            </div>
+            <div class="history-modal-body" id="sampleHistoryModalBody">
+                <div class="history-loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 抽检历史弹窗相关变量
+        var currentSampleTaskId = null;
+        var isSampleDragging = false;
+        var sampleDragOffset = { x: 0, y: 0 };
+        var sampleModalContent = null;
+        var sampleModalHeader = null;
+
+        // 打开抽检历史弹窗
+        function openSampleHistoryModal(taskId) {
+            currentSampleTaskId = taskId;
+            var modal = document.getElementById('sampleHistoryModal');
+            sampleModalContent = document.getElementById('sampleHistoryModalContent');
+            sampleModalHeader = document.getElementById('sampleHistoryModalHeader');
+            var modalBody = document.getElementById('sampleHistoryModalBody');
+            
+            modal.style.display = 'block';
+            modalBody.innerHTML = '<div class="history-loading">加载中...</div>';
+            
+            // 重置弹窗位置和大小
+            sampleModalContent.style.top = '50%';
+            sampleModalContent.style.left = '50%';
+            sampleModalContent.style.transform = 'translate(-50%, -50%)';
+            sampleModalContent.style.width = '800px';
+            sampleModalContent.style.height = '600px';
+            
+            // 加载抽检历史记录
+            fetch('/audit/progress/sample/history?task_id=' + taskId)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('网络请求失败: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success !== undefined) {
+                        if (data.success) {
+                            // 成功获取数据
+                            if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+                                displaySampleHistory(data.data);
+                            } else {
+                                // 没有历史记录
+                                modalBody.innerHTML = '<div class="history-empty">无抽检历史记录</div>';
+                            }
+                        } else {
+                            // API返回了错误
+                            modalBody.innerHTML = '<div class="history-empty">加载失败：' + (data.message || '未知错误') + '</div>';
+                        }
+                    } else {
+                        // 响应格式不正确
+                        modalBody.innerHTML = '<div class="history-empty">数据格式错误，请重试</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    modalBody.innerHTML = '<div class="history-empty">加载失败：' + error.message + '，请重试</div>';
+                });
+        }
+
+        // 关闭抽检历史弹窗
+        function closeSampleHistoryModal() {
+            var modal = document.getElementById('sampleHistoryModal');
+            modal.style.display = 'none';
+            currentSampleTaskId = null;
+        }
+
+        // 显示抽检历史记录
+        function displaySampleHistory(historyList) {
+            var modalBody = document.getElementById('sampleHistoryModalBody');
+            
+            if (!historyList || historyList.length === 0) {
+                modalBody.innerHTML = '<div class="history-empty">无抽检历史记录</div>';
+                return;
+            }
+            
+            var html = '';
+            historyList.forEach(function(item) {
+                var resultClass = item.sample_result || '';
+                var comment = item.sample_comment || '';
+                var result = item.sample_result || '';
+                
+                html += '<div class="history-item">';
+                html += '<div class="history-item-header">';
+                html += '<span class="history-item-time">' + (item.sampled_at || '') + '</span>';
+                html += '<div class="history-item-meta">';
+                html += '<span>抽检人：' + (item.sampled_by || '') + '</span>';
+                if (result) {
+                    html += '<span class="history-item-status ' + resultClass + '">' + result + '</span>';
+                }
+                html += '</div>';
+                html += '</div>';
+                html += '<div class="history-item-comment">' + (comment || '（无抽检意见）') + '</div>';
+                html += '</div>';
+            });
+            
+            modalBody.innerHTML = html;
+        }
+
+        // 点击弹窗外部关闭
+        window.addEventListener('click', function(event) {
+            var modal = document.getElementById('sampleHistoryModal');
+            if (event.target == modal) {
+                closeSampleHistoryModal();
+            }
+        });
+
+        // 抽检历史弹窗拖拽功能
+        document.addEventListener('DOMContentLoaded', function() {
+            sampleModalHeader = document.getElementById('sampleHistoryModalHeader');
+            sampleModalContent = document.getElementById('sampleHistoryModalContent');
+            
+            if (sampleModalHeader && sampleModalContent) {
+                sampleModalHeader.addEventListener('mousedown', function(e) {
+                    if (e.target.classList.contains('history-modal-close')) {
+                        return;
+                    }
+                    isSampleDragging = true;
+                    var rect = sampleModalContent.getBoundingClientRect();
+                    sampleDragOffset.x = e.clientX - rect.left;
+                    sampleDragOffset.y = e.clientY - rect.top;
+                    sampleModalContent.style.cursor = 'move';
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', function(e) {
+                    if (!isSampleDragging) return;
+                    
+                    var x = e.clientX - sampleDragOffset.x;
+                    var y = e.clientY - sampleDragOffset.y;
+                    
+                    // 限制在窗口内
+                    var maxX = window.innerWidth - sampleModalContent.offsetWidth;
+                    var maxY = window.innerHeight - sampleModalContent.offsetHeight;
+                    x = Math.max(0, Math.min(x, maxX));
+                    y = Math.max(0, Math.min(y, maxY));
+                    
+                    sampleModalContent.style.left = x + 'px';
+                    sampleModalContent.style.top = y + 'px';
+                    sampleModalContent.style.transform = 'none';
+                });
+
+                document.addEventListener('mouseup', function() {
+                    if (isSampleDragging) {
+                        isSampleDragging = false;
+                        if (sampleModalContent) {
+                            sampleModalContent.style.cursor = 'default';
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+
+    <script>
+        // 操作下拉菜单稳定性优化 - 使用延迟隐藏机制
+        document.addEventListener('DOMContentLoaded', function() {
+            var dropdowns = document.querySelectorAll('.action-dropdown');
+            var hideTimers = {};
+            
+            dropdowns.forEach(function(dropdown, index) {
+                var menu = dropdown.querySelector('.action-dropdown-menu');
+                var dropdownId = 'dropdown-' + index;
+                
+                // 鼠标进入下拉区域
+                dropdown.addEventListener('mouseenter', function() {
+                    // 清除隐藏定时器
+                    if (hideTimers[dropdownId]) {
+                        clearTimeout(hideTimers[dropdownId]);
+                        delete hideTimers[dropdownId];
+                    }
+                    // 显示菜单
+                    menu.style.display = 'block';
+                });
+                
+                // 鼠标离开下拉区域
+                dropdown.addEventListener('mouseleave', function(e) {
+                    // 检查鼠标是否真的离开了整个下拉区域（包括菜单）
+                    var relatedTarget = e.relatedTarget;
+                    if (!dropdown.contains(relatedTarget)) {
+                        // 延迟隐藏，给用户时间移动鼠标到菜单
+                        hideTimers[dropdownId] = setTimeout(function() {
+                            menu.style.display = 'none';
+                            delete hideTimers[dropdownId];
+                        }, 200); // 200ms延迟
+                    }
+                });
+                
+                // 鼠标进入菜单
+                menu.addEventListener('mouseenter', function() {
+                    // 清除隐藏定时器
+                    if (hideTimers[dropdownId]) {
+                        clearTimeout(hideTimers[dropdownId]);
+                        delete hideTimers[dropdownId];
+                    }
+                    menu.style.display = 'block';
+                });
+                
+                // 鼠标离开菜单
+                menu.addEventListener('mouseleave', function(e) {
+                    var relatedTarget = e.relatedTarget;
+                    if (!dropdown.contains(relatedTarget)) {
+                        // 延迟隐藏
+                        hideTimers[dropdownId] = setTimeout(function() {
+                            menu.style.display = 'none';
+                            delete hideTimers[dropdownId];
+                        }, 200);
+                    }
+                });
+            });
+        });
+    </script>
+
+    <!-- SSE实时更新 -->
+    <script>
+        (function() {
+            // 获取当前页面的筛选条件
+            function getCurrentFilters() {
+                const params = new URLSearchParams(window.location.search);
+                return {
+                    page: params.get('page') || '1',
+                    file_name: params.get('file_name') || '',
+                    audit_status: params.get('audit_status') || '',
+                    archive_type: params.get('archive_type') || '',
+                    sample_status: params.get('sample_status') || ''
+                };
+            }
+
+            // 构建SSE URL
+            function buildSSEUrl() {
+                const filters = getCurrentFilters();
+                const params = new URLSearchParams();
+                if (filters.page) params.set('page', filters.page);
+                if (filters.file_name) params.set('file_name', filters.file_name);
+                if (filters.audit_status) params.set('audit_status', filters.audit_status);
+                if (filters.archive_type) params.set('archive_type', filters.archive_type);
+                if (filters.sample_status) params.set('sample_status', filters.sample_status);
+                
+                const query = params.toString();
+                return '/audit/progress/events' + (query ? '?' + query : '');
+            }
+
+            // 更新任务行
+            function updateTaskRow(taskId, data) {
+                const row = document.querySelector(`tr[data-task-id="${taskId}"]`);
+                if (!row) {
+                    // 如果任务不在当前页，刷新整个列表
+                    console.log('[SSE] 任务不在当前页，刷新列表');
+                    window.location.reload();
+                    return;
+                }
+
+                console.log('[SSE] 更新任务行:', taskId, data);
+
+                // 更新审核状态 - 在第三列（td:nth-child(3)）
+                if (data.audit_status) {
+                    const statusTd = row.querySelector('td:nth-child(3)');
+                    if (statusTd) {
+                        // 查找第一个span（状态span）
+                        const statusSpan = statusTd.querySelector('span');
+                        if (statusSpan) {
+                            statusSpan.textContent = data.audit_status;
+                            // 更新类名
+                            statusSpan.className = getStatusClass(data.audit_status);
+                            console.log('[SSE] 审核状态已更新:', data.audit_status);
+                            
+                            // 如果审核状态更新为"已完成"，需要更新抽检状态列
+                            if (data.audit_status === '已完成') {
+                                // 检查当前抽检状态列，如果显示"-"，则更新为"待抽检"
+                                const sampleTd = row.querySelector('td:nth-child(4)');
+                                if (sampleTd) {
+                                    const currentSampleText = sampleTd.textContent.trim();
+                                    // 如果当前显示"-"或为空，则更新为"待抽检"
+                                    if (currentSampleText === '-' || currentSampleText === '') {
+                                        sampleTd.innerHTML = '<span class="sample-status pending">待抽检</span>';
+                                        console.log('[SSE] 抽检状态列已更新为"待抽检"');
+                                    }
+                                }
+                            } else {
+                                // 如果审核状态不是"已完成"，抽检状态列应该显示"-"
+                                const sampleTd = row.querySelector('td:nth-child(4)');
+                                if (sampleTd) {
+                                    sampleTd.innerHTML = '<span style="color: #999;">-</span>';
+                                }
+                            }
+                        } else {
+                            console.warn('[SSE] 未找到状态span，td内容:', statusTd.innerHTML);
+                        }
+                    } else {
+                        console.warn('[SSE] 未找到状态td');
+                    }
+                }
+
+                // 更新审核意见 - 在第五列（td:nth-child(5)）
+                if (data.audit_comment !== undefined) {
+                    const commentTd = row.querySelector('td:nth-child(5)');
+                    if (commentTd) {
+                        if (data.audit_comment && data.audit_comment.trim() !== '') {
+                            commentTd.textContent = data.audit_comment;
+                        } else {
+                            commentTd.innerHTML = '<span style="color: #999;">-</span>';
+                        }
+                        console.log('[SSE] 审核意见已更新:', data.audit_comment);
+                    } else {
+                        console.warn('[SSE] 未找到审核意见td');
+                    }
+                }
+                
+                // 更新抽检状态（如果事件中包含抽检信息）
+                if (data.sample_result !== undefined) {
+                    const sampleTd = row.querySelector('td:nth-child(4)');
+                    if (sampleTd) {
+                        // 检查审核状态是否为"已完成"
+                        const auditStatusTd = row.querySelector('td:nth-child(3)');
+                        const auditStatusSpan = auditStatusTd ? auditStatusTd.querySelector('span') : null;
+                        const currentAuditStatus = auditStatusSpan ? auditStatusSpan.textContent.trim() : '';
+                        
+                        if (currentAuditStatus === '已完成') {
+                            // 如果已抽检，显示抽检状态
+                            if (data.sample_result === '待整改') {
+                                sampleTd.innerHTML = '<span class="sample-status need-fix" title="抽检结果：待整改">已抽检</span>';
+                            } else {
+                                sampleTd.innerHTML = '<span class="sample-status completed" title="抽检结果：通过">已抽检</span>';
+                            }
+                            console.log('[SSE] 抽检状态已更新:', data.sample_result);
+                        }
+                    }
+                }
+                
+                // 添加更新动画效果
+                row.style.backgroundColor = '#fff3cd';
+                setTimeout(() => {
+                    row.style.backgroundColor = '';
+                }, 2000);
+            }
+
+            // 获取状态样式类
+            function getStatusClass(status) {
+                const statusMap = {
+                    '未审核': 'status-pending',
+                    '已审核待整改': 'status-reviewing',
+                    '已完成': 'status-completed'
+                };
+                return statusMap[status] || 'status-pending';
+            }
+
+            // 删除任务行
+            function removeTaskRow(taskId) {
+                const row = document.querySelector(`tr[data-task-id="${taskId}"]`);
+                if (row) {
+                    row.style.transition = 'opacity 0.5s';
+                    row.style.opacity = '0';
+                    setTimeout(() => {
+                        row.remove();
+                        // 刷新列表以更新分页信息
+                        window.location.reload();
+                    }, 500);
+                }
+            }
+
+            // 连接SSE
+            let eventSource = null;
+            let reconnectAttempts = 0;
+            const maxReconnectAttempts = 5;
+
+            function connectSSE() {
+                if (eventSource) {
+                    eventSource.close();
+                }
+
+                const url = buildSSEUrl();
+                eventSource = new EventSource(url);
+
+                eventSource.onopen = function() {
+                    console.log('[SSE] 连接已建立，URL:', url);
+                    reconnectAttempts = 0;
+                };
+
+                eventSource.onmessage = function(event) {
+                    console.log('[SSE] 收到原始事件数据:', event.data);
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('[SSE] 解析后的事件数据:', data);
+
+                        switch(data.type) {
+                            case 'connected':
+                                console.log('[SSE] 连接成功');
+                                break;
+                            
+                            case 'heartbeat':
+                                // 心跳，不做处理
+                                break;
+                            
+                            case 'task_created':
+                                // 新任务创建，刷新列表
+                                console.log('[SSE] 新任务创建:', data.task_id);
+                                window.location.reload();
+                                break;
+                            
+                            case 'task_updated':
+                                // 任务更新
+                                console.log('[SSE] 任务更新:', data.task_id, data.data);
+                                updateTaskRow(data.task_id, data.data);
+                                break;
+                            
+                            case 'task_deleted':
+                                // 任务删除
+                                console.log('[SSE] 任务删除:', data.task_id);
+                                removeTaskRow(data.task_id);
+                                break;
+                            
+                            case 'task_sampled':
+                                // 任务抽检
+                                console.log('[SSE] 任务抽检:', data.task_id, data.data);
+                                updateTaskRow(data.task_id, data.data);
+                                break;
+                            
+                            case 'task_refreshed':
+                                // 需要刷新整个列表
+                                console.log('[SSE] 刷新列表');
+                                window.location.reload();
+                                break;
+                            
+                            default:
+                                console.log('[SSE] 未知事件类型:', data.type);
+                        }
+                    } catch (e) {
+                        console.error('[SSE] 解析事件数据失败:', e, event.data);
+                    }
+                };
+
+                eventSource.onerror = function(error) {
+                    console.error('[SSE] 连接错误:', error, 'readyState:', eventSource.readyState);
+                    // readyState: 0=CONNECTING, 1=OPEN, 2=CLOSED
+                    if (eventSource.readyState === EventSource.CLOSED) {
+                        console.log('[SSE] 连接已关闭');
+                    }
+                    eventSource.close();
+
+                    // 自动重连
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // 指数退避，最多30秒
+                        console.log(`[SSE] ${delay/1000}秒后尝试重连 (${reconnectAttempts}/${maxReconnectAttempts})`);
+                        setTimeout(connectSSE, delay);
+                    } else {
+                        console.error('[SSE] 达到最大重连次数，停止重连');
+                    }
+                };
+            }
+
+            // 页面加载时连接SSE
+            if (typeof EventSource !== 'undefined') {
+                connectSSE();
+
+                // 页面卸载时关闭连接
+                window.addEventListener('beforeunload', function() {
+                    if (eventSource) {
+                        eventSource.close();
+                    }
+                });
+
+                // 页面可见性变化时处理连接
+                document.addEventListener('visibilitychange', function() {
+                    if (document.hidden) {
+                        // 页面隐藏时保持连接（可选：可以关闭以节省资源）
+                    } else {
+                        // 页面显示时确保连接
+                        if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+                            connectSSE();
+                        }
+                    }
+                });
+            } else {
+                console.warn('[SSE] 浏览器不支持EventSource，实时更新功能不可用');
+            }
+        })();
+    </script>
+
+    </div>
+</body>
+</html>
+
+
+
+
+
+
+
