@@ -59,7 +59,7 @@ type PageData struct {
 	SearchName    string
 	AuditStatus   string // 审核状态查询条件
 	ArchiveType   string // 建档类型查询条件
-	SampleStatus  string // 抽检状态查询条件：全部、已抽检、未抽检
+	SampleStatus  string // 抽检状态查询条件：全部、已抽检、待整改、待抽检
 	CurrentPage   int
 	TotalPages    int
 	TotalCount    int    // 总记录数
@@ -86,7 +86,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	searchName := r.URL.Query().Get("file_name")
 	auditStatus := r.URL.Query().Get("audit_status") // 审核状态: 未审核, 已审核待整改, 已完成 或空
 	archiveType := r.URL.Query().Get("archive_type") // 建档类型: 新增, 取推, 补档案 或空
-	sampleStatus := r.URL.Query().Get("sample_status") // 抽检状态: 全部, 已抽检, 未抽检 或空
+	sampleStatus := r.URL.Query().Get("sample_status") // 抽检状态: 全部, 已抽检, 待整改, 待抽检 或空
 	pageStr := r.URL.Query().Get("page")
 	importMsg := r.URL.Query().Get("message")
 	importCountStr := r.URL.Query().Get("count")
@@ -142,13 +142,28 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if sampleStatus != "" {
 		validSampleStatuses := map[string]bool{
 			"已抽检": true,
-			"未抽检": true,
+			"待整改": true,
+			"待抽检": true,
 		}
 		if validSampleStatuses[sampleStatus] {
 			if sampleStatus == "已抽检" {
-				whereSQL += " AND is_sampled = 1"
-			} else if sampleStatus == "未抽检" {
-				whereSQL += " AND (is_sampled = 0 OR is_sampled IS NULL)"
+				// 已抽检：审核状态为"已完成"，is_sampled = 1，且最近一次抽检结果不是"待整改"（包括NULL）
+				whereSQL += ` AND audit_status = '已完成' 
+					AND is_sampled = 1 
+					AND COALESCE((SELECT sample_result FROM checkpoint_sample_records 
+						WHERE task_id = checkpoint_tasks.id 
+						ORDER BY sampled_at DESC LIMIT 1), '') != '待整改'`
+			} else if sampleStatus == "待整改" {
+				// 待整改：审核状态为"已完成"，is_sampled = 1，且最近一次抽检结果为"待整改"
+				whereSQL += ` AND audit_status = '已完成' 
+					AND is_sampled = 1 
+					AND (SELECT sample_result FROM checkpoint_sample_records 
+						WHERE task_id = checkpoint_tasks.id 
+						ORDER BY sampled_at DESC LIMIT 1) = '待整改'`
+			} else if sampleStatus == "待抽检" {
+				// 待抽检：审核状态为"已完成"，is_sampled = 0 或 NULL
+				whereSQL += ` AND audit_status = '已完成' 
+					AND (is_sampled = 0 OR is_sampled IS NULL)`
 			}
 		}
 	}
@@ -207,7 +222,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		)
 
 		if err != nil {
-			fmt.Printf("❌ Database scan error: %v\n", err)
+			logger.Errorf("卡口审核进度-数据库扫描错误: %v, taskID: %d", err, task.ID)
 			continue
 		}
 
@@ -689,6 +704,18 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		task.ImportTime = formatDateTime(importTimeRaw.String)
 
+		// 获取抽检信息，判断是否显示"已整改"复选框
+		sampleInfo, err := GetSampleInfo(taskID)
+		if err != nil {
+			logger.Errorf("查询抽检信息失败: %v, taskID: %d", err, taskID)
+			// 不阻断流程，继续执行
+			sampleInfo = &SampleInfo{}
+		}
+		
+		// 判断是否显示"已整改"复选框
+		// 条件：审核状态为"已完成"且最近一次抽检结果为"待整改"
+		showFixedCheckbox := task.AuditStatus == "已完成" && sampleInfo.LastSampleResult == "待整改"
+
 		// 获取筛选条件参数（用于返回链接）
 		allParams := r.URL.Query()
 		searchName := allParams.Get("file_name")
@@ -719,13 +746,14 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		type EditPageData struct {
-			Title      string
-			ActiveMenu string
-			SubMenu    string
-			Task       CheckpointTask
-			Query      string            // 筛选条件查询字符串（保留用于兼容）
-			QueryParams map[string]string // 筛选条件参数的键值对
-			BackURL    string            // 完整的返回URL
+			Title            string
+			ActiveMenu       string
+			SubMenu          string
+			Task             CheckpointTask
+			Query            string            // 筛选条件查询字符串（保留用于兼容）
+			QueryParams      map[string]string // 筛选条件参数的键值对
+			BackURL          string            // 完整的返回URL
+			ShowFixedCheckbox bool             // 是否显示"已整改"复选框
 		}
 
 		// 构建QueryParams map
@@ -744,13 +772,14 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		data := EditPageData{
-			Title:      "编辑审核意见",
-			ActiveMenu: "audit",
-			SubMenu:    "checkpoint_progress",
-			Task:       task,
-			Query:      query,
-			QueryParams: queryParams,
-			BackURL:    backURL,
+			Title:            "编辑审核意见",
+			ActiveMenu:       "audit",
+			SubMenu:          "checkpoint_progress",
+			Task:             task,
+			Query:            query,
+			QueryParams:      queryParams,
+			BackURL:          backURL,
+			ShowFixedCheckbox: showFixedCheckbox,
 		}
 
 		tmpl, err := template.ParseFiles("templates/checkpointedit.html")
@@ -784,6 +813,7 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 
 		auditComment := strings.TrimSpace(r.FormValue("audit_comment"))
 		auditStatus := strings.TrimSpace(r.FormValue("audit_status"))
+		isFixed := r.FormValue("is_fixed") == "1" // 是否勾选了"已整改"
 
 		// 验证审核状态
 		validStatuses := map[string]bool{
@@ -794,6 +824,27 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		if !validStatuses[auditStatus] {
 			http.Error(w, "无效的审核状态", http.StatusBadRequest)
 			return
+		}
+
+		// 如果勾选了"已整改"，需要验证条件：审核状态为"已完成"且最近一次抽检结果为"待整改"
+		if isFixed {
+			// 查询当前审核状态和最近一次抽检结果
+			var currentAuditStatus string
+			var lastSampleResult sql.NullString
+			checkSQL := `SELECT ct.audit_status, 
+				(SELECT sample_result FROM checkpoint_sample_records WHERE task_id = ? ORDER BY sampled_at DESC LIMIT 1) AS last_sample_result
+				FROM checkpoint_tasks ct WHERE ct.id = ?`
+			err = db.DBInstance.QueryRow(checkSQL, taskID, taskID).Scan(&currentAuditStatus, &lastSampleResult)
+			if err != nil {
+				http.Error(w, "查询任务信息失败: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			
+			// 验证条件
+			if currentAuditStatus != "已完成" || !lastSampleResult.Valid || lastSampleResult.String != "待整改" {
+				http.Error(w, "只有审核状态为'已完成'且最近一次抽检结果为'待整改'时才能标记整改完成", http.StatusBadRequest)
+				return
+			}
 		}
 
 		// 开始事务
@@ -865,6 +916,20 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// 如果勾选了"已整改"，重置抽检状态
+		if isFixed {
+			resetSampleSQL := `UPDATE checkpoint_tasks 
+				SET is_sampled = 0, last_sampled_at = NULL 
+				WHERE id = ?`
+			_, err = tx.Exec(resetSampleSQL, taskID)
+			if err != nil {
+				tx.Rollback()
+				logger.Errorf("重置抽检状态失败: %v, taskID: %d", err, taskID)
+				http.Error(w, "重置抽检状态失败: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
 		// 提交事务
 		err = tx.Commit()
 		if err != nil {
@@ -875,6 +940,9 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		// 记录操作日志
 		if currentUser != nil {
 			action := fmt.Sprintf("编辑卡口审核意见（档案ID：%d，状态：%s）", taskID, auditStatus)
+			if isFixed {
+				action += "，已标记整改完成"
+			}
 			operationlog.Record(r, currentUser.Username, action)
 			
 			// 广播任务更新事件
@@ -884,7 +952,7 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 				"audit_comment": auditComment,
 				"updated_by":    currentUser.Username,
 			}
-			fmt.Printf("[CheckpointEditHandler] 广播任务更新事件: taskID=%d, audit_status=%s, audit_comment=%s\n", 
+			logger.Infof("[CheckpointEditHandler] 广播任务更新事件: taskID=%d, audit_status=%s, audit_comment=%s", 
 				taskID, auditStatus, auditComment)
 			hub.BroadcastTaskUpdated(int(taskID), updateData)
 		}

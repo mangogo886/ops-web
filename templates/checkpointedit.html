@@ -342,6 +342,15 @@
                 <textarea id="audit_comment" name="audit_comment" placeholder="请输入审核意见...">{{if .Task.AuditComment.Valid}}{{.Task.AuditComment.String}}{{end}}</textarea>
             </div>
             
+            {{if .ShowFixedCheckbox}}
+            <div class="form-group">
+                <label style="display: flex; align-items: center; font-weight: normal; cursor: pointer;">
+                    <input type="checkbox" id="is_fixed" name="is_fixed" value="1" style="width: auto; margin-right: 8px; cursor: pointer;">
+                    <span>已整改（勾选后，抽检状态将重置为待抽检）</span>
+                </label>
+            </div>
+            {{end}}
+            
             <div class="btn-group">
                 <button type="submit" class="btn btn-primary">保存</button>
                 <a href="{{.BackURL}}" class="btn btn-secondary">取消</a>

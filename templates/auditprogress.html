@@ -900,7 +900,8 @@ function confirmDelete(taskId, fileName) {
             <select name="sample_status" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                 <option value="">全部</option>
                 <option value="已抽检" {{if eq .SampleStatus "已抽检"}}selected{{end}}>已抽检</option>
-                <option value="未抽检" {{if eq .SampleStatus "未抽检"}}selected{{end}}>未抽检</option>
+                <option value="待整改" {{if eq .SampleStatus "待整改"}}selected{{end}}>待整改</option>
+                <option value="待抽检" {{if eq .SampleStatus "待抽检"}}selected{{end}}>待抽检</option>
             </select>
             <button type="submit">查询</button>
             {{if or .SearchName .AuditStatus .ArchiveType .SampleStatus}}
@@ -998,7 +999,7 @@ function confirmDelete(taskId, fileName) {
                             {{if $task.IsSampled}}
                                 {{if eq $task.LastSampleResult "待整改"}}
                                 <span class="sample-status need-fix" title="抽检人：{{$task.SampledBy}}&#10;最近一次抽检时间：{{$task.LastSampledAt}}&#10;抽检次数：{{$task.SampleCount}}次&#10;最近一次抽检结果：{{$task.LastSampleResult}}">
-                                    已抽检{{if gt $task.SampleCount 1}}({{$task.SampleCount}}){{end}}
+                                    待整改{{if gt $task.SampleCount 1}}({{$task.SampleCount}}){{end}}
                                 </span>
                                 {{else}}
                                 <span class="sample-status completed" title="抽检人：{{$task.SampledBy}}&#10;最近一次抽检时间：{{$task.LastSampledAt}}&#10;抽检次数：{{$task.SampleCount}}次&#10;最近一次抽检结果：{{if $task.LastSampleResult}}{{$task.LastSampleResult}}{{else}}通过{{end}}">
