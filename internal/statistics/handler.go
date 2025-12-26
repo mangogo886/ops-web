@@ -9,6 +9,7 @@ import (
 	"ops-web/internal/db"
 	"ops-web/internal/logger"
 	"ops-web/internal/operationlog"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -115,7 +116,7 @@ func getStatisticsByDateRange(startTime, endTime time.Time, auditStatus string, 
 	// 构建 SQL 查询（关联audit_tasks表，只统计archive_type为'新增'的记录）
 	query := `
 		SELECT 
-			ad.management_unit,
+			at.organization,
 			ad.monitor_point_type,
 			COUNT(*) as count
 		FROM audit_details ad
@@ -126,24 +127,33 @@ func getStatisticsByDateRange(startTime, endTime time.Time, auditStatus string, 
 
 	args := []interface{}{}
 
-	// 如果需要过滤时间（按日期范围统计）
-	if hasDateFilter && !startTime.IsZero() && !endTime.IsZero() {
-		// 使用 DATE() 函数提取日期部分进行比较
-		query += " AND DATE(ad.update_time) >= ? AND DATE(ad.update_time) <= ?"
-		args = append(args, startTime.Format("2006-01-02"))
-		args = append(args, endTime.Format("2006-01-02"))
-	}
-
-	// 建档状态查询
+	// 建档状态查询（需要先判断，以便决定使用哪个时间字段）
+	var isCompleted bool
 	if auditStatus != "" {
 		statusInt, err := strconv.Atoi(auditStatus)
 		if err == nil && (statusInt == 0 || statusInt == 1 || statusInt == 2) {
 			query += " AND ad.audit_status = ?"
 			args = append(args, statusInt)
+			// 如果建档状态为"已建档"（值为"2"），标记为已完成
+			if statusInt == 2 {
+				isCompleted = true
+			}
 		}
 	}
 
-	query += " GROUP BY ad.management_unit, ad.monitor_point_type ORDER BY ad.management_unit, ad.monitor_point_type"
+	// 如果需要过滤时间（按日期范围统计）
+	if hasDateFilter && !startTime.IsZero() && !endTime.IsZero() {
+		// 如果建档状态为"已建档"（值为"2"），使用completed_at字段；否则使用import_time字段
+		if isCompleted {
+			query += " AND DATE(at.completed_at) >= ? AND DATE(at.completed_at) <= ?"
+		} else {
+			query += " AND DATE(at.import_time) >= ? AND DATE(at.import_time) <= ?"
+		}
+		args = append(args, startTime.Format("2006-01-02"))
+		args = append(args, endTime.Format("2006-01-02"))
+	}
+
+	query += " GROUP BY at.organization, ad.monitor_point_type ORDER BY at.organization, ad.monitor_point_type"
 
 	rows, err := db.DBInstance.Query(query, args...)
 	if err != nil {
@@ -214,6 +224,11 @@ func getStatisticsByDateRange(startTime, endTime time.Time, auditStatus string, 
 	for _, stat := range statsMap {
 		stats = append(stats, *stat)
 	}
+
+	// 按分局名称排序，确保每次查询结果顺序一致
+	sort.Slice(stats, func(i, j int) bool {
+		return stats[i].ManagementUnit < stats[j].ManagementUnit
+	})
 
 	return stats, summary
 }

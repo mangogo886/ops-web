@@ -10,6 +10,7 @@ import (
 	"ops-web/internal/db"
 	"ops-web/internal/logger"
 	"ops-web/internal/operationlog"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -67,41 +68,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	month := r.URL.Query().Get("month")        // 月份，格式: 2024-01
 	auditStatus := r.URL.Query().Get("audit_status") // 建档状态: 0, 1, 2 或空
 
-	// 构建查询条件
-	whereSQL := " WHERE 1=1"
-	args := []interface{}{}
-
-	// 月份查询：根据时间字段按月份
-	// 如果建档状态为"已建档"（值为"2"），使用completed_at字段；否则使用update_time字段
-	if month != "" {
-		// 验证月份格式
-		if _, err := time.Parse("2006-01", month); err == nil {
-			parts := strings.Split(month, "-")
-			if len(parts) == 2 {
-				year, _ := strconv.Atoi(parts[0])
-				monthNum, _ := strconv.Atoi(parts[1])
-				// 如果建档状态为"已建档"（值为"2"），使用completed_at字段
-				if auditStatus == "2" {
-					whereSQL += " AND YEAR(completed_at) = ? AND MONTH(completed_at) = ?"
-				} else {
-					whereSQL += " AND YEAR(update_time) = ? AND MONTH(update_time) = ?"
-				}
-				args = append(args, year, monthNum)
-			}
-		}
-	}
-
-	// 建档状态查询
-	if auditStatus != "" {
-		statusInt, err := strconv.Atoi(auditStatus)
-		if err == nil && (statusInt == 0 || statusInt == 1 || statusInt == 2) {
-			whereSQL += " AND audit_status = ?"
-			args = append(args, statusInt)
-		}
-	}
-
-	// 查询统计数据
-	stats, summary := getStatistics(whereSQL, args)
+	// 查询统计数据（直接传递参数，在getStatistics内部构建带表别名的whereSQL）
+	stats, summary := getStatistics(month, auditStatus)
 
 	// 构建查询参数字符串（用于表单回显）
 	queryParams := []string{}
@@ -147,9 +115,48 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// buildWhereSQL: 构建带表别名的WHERE条件
+// taskPrefix: 任务表别名（用于completed_at和import_time字段，如"at"或"ct"）
+// detailPrefix: 明细表别名（用于audit_status字段，如"ad"或"cd"）
+func buildWhereSQL(month, auditStatus string, taskPrefix, detailPrefix string) (string, []interface{}) {
+	whereSQL := " WHERE 1=1"
+	args := []interface{}{}
+
+	// 月份查询：根据时间字段按月份
+	// 如果建档状态为"已建档"（值为"2"），使用completed_at字段（在任务表）；否则使用import_time字段（在任务表）
+	if month != "" {
+		// 验证月份格式
+		if _, err := time.Parse("2006-01", month); err == nil {
+			parts := strings.Split(month, "-")
+			if len(parts) == 2 {
+				year, _ := strconv.Atoi(parts[0])
+				monthNum, _ := strconv.Atoi(parts[1])
+				// 如果建档状态为"已建档"（值为"2"），使用completed_at字段；否则使用import_time字段
+				if auditStatus == "2" {
+					whereSQL += " AND YEAR(" + taskPrefix + ".completed_at) = ? AND MONTH(" + taskPrefix + ".completed_at) = ?"
+				} else {
+					whereSQL += " AND YEAR(" + taskPrefix + ".import_time) = ? AND MONTH(" + taskPrefix + ".import_time) = ?"
+				}
+				args = append(args, year, monthNum)
+			}
+		}
+	}
+
+	// 建档状态查询
+	if auditStatus != "" {
+		statusInt, err := strconv.Atoi(auditStatus)
+		if err == nil && (statusInt == 0 || statusInt == 1 || statusInt == 2) {
+			whereSQL += " AND " + detailPrefix + ".audit_status = ?"
+			args = append(args, statusInt)
+		}
+	}
+
+	return whereSQL, args
+}
+
 // getStatistics: 获取统计数据
-func getStatistics(whereSQL string, args []interface{}) ([]StatRow, StatRow) {
-	// 使用 map 来组织数据，key 是 management_unit
+func getStatistics(month, auditStatus string) ([]StatRow, StatRow) {
+	// 使用 map 来组织数据，key 是 organization
 	statsMap := make(map[string]*StatRow)
 
 	// 汇总数据
@@ -158,15 +165,12 @@ func getStatistics(whereSQL string, args []interface{}) ([]StatRow, StatRow) {
 	}
 
 	// 1. 从 audit_details 表统计视频、人脸和车辆（只统计档案类型为"新增"的）
-	// 将 whereSQL 中的字段名替换为带表别名 ad. 或 at. 的版本
-	// completed_at 字段在任务表（at），update_time 在明细表（ad），需要分别处理
-	auditWhereSQL := strings.ReplaceAll(whereSQL, "completed_at", "at.completed_at")
-	auditWhereSQL = strings.ReplaceAll(auditWhereSQL, "update_time", "ad.update_time")
-	auditWhereSQL = strings.ReplaceAll(auditWhereSQL, "audit_status", "ad.audit_status")
+	// 构建设备审核的WHERE条件：completed_at在任务表（at），update_time和audit_status在明细表（ad）
+	auditWhereSQL, auditArgs := buildWhereSQL(month, auditStatus, "at", "ad")
 	
 	query := `
 		SELECT 
-			ad.management_unit,
+			at.organization,
 			ad.monitor_point_type,
 			ad.camera_function_type,
 			at.is_single_soldier
@@ -174,12 +178,12 @@ func getStatistics(whereSQL string, args []interface{}) ([]StatRow, StatRow) {
 		INNER JOIN audit_tasks at ON ad.task_id = at.id
 		` + auditWhereSQL + `
 		AND at.archive_type = '新增'
-		ORDER BY ad.management_unit, ad.monitor_point_type
+		ORDER BY at.organization, ad.monitor_point_type
 	`
 
-	rows, err := db.DBInstance.Query(query, args...)
+	rows, err := db.DBInstance.Query(query, auditArgs...)
 	if err != nil {
-		logger.Errorf("月度建档数据-数据库查询失败: %v, SQL: %s, Args: %v", err, query, args)
+		logger.Errorf("月度建档数据-数据库查询失败: %v, SQL: %s, Args: %v", err, query, auditArgs)
 		return []StatRow{}, StatRow{ManagementUnit: "汇总"}
 	}
 
@@ -325,26 +329,23 @@ func getStatistics(whereSQL string, args []interface{}) ([]StatRow, StatRow) {
 	rows.Close()
 
 	// 2. 从 checkpoint_details 表统计车辆（只统计档案类型为"新增"的）
-	// completed_at 字段在任务表（ct），update_time 在明细表（cd），需要分别处理
-	// 将 whereSQL 中的字段名替换为带表别名 cd. 或 ct. 的版本
-	checkpointWhereSQL := strings.ReplaceAll(whereSQL, "completed_at", "ct.completed_at")
-	checkpointWhereSQL = strings.ReplaceAll(checkpointWhereSQL, "update_time", "cd.update_time")
-	checkpointWhereSQL = strings.ReplaceAll(checkpointWhereSQL, "audit_status", "cd.audit_status")
+	// 构建卡口的WHERE条件：completed_at在任务表（ct），update_time在明细表（cd）
+	checkpointWhereSQL, checkpointArgs := buildWhereSQL(month, auditStatus, "ct", "cd")
 	
 	checkpointQuery := `
 		SELECT 
-			cd.management_unit,
+			ct.organization,
 			cd.checkpoint_point_type
 		FROM checkpoint_details cd
 		INNER JOIN checkpoint_tasks ct ON cd.task_id = ct.id
 		` + checkpointWhereSQL + `
 		AND ct.archive_type = '新增'
-		ORDER BY cd.management_unit, cd.checkpoint_point_type
+		ORDER BY ct.organization, cd.checkpoint_point_type
 	`
 
-	checkpointRows, err := db.DBInstance.Query(checkpointQuery, args...)
+	checkpointRows, err := db.DBInstance.Query(checkpointQuery, checkpointArgs...)
 	if err != nil {
-		logger.Errorf("月度建档数据-卡口数据查询失败: %v, SQL: %s, Args: %v", err, checkpointQuery, args)
+		logger.Errorf("月度建档数据-卡口数据查询失败: %v, SQL: %s, Args: %v", err, checkpointQuery, checkpointArgs)
 		// 继续处理，不中断
 	} else {
 		for checkpointRows.Next() {
@@ -428,6 +429,11 @@ func getStatistics(whereSQL string, args []interface{}) ([]StatRow, StatRow) {
 		stats = append(stats, *stat)
 	}
 
+	// 按分局名称排序，确保每次查询结果顺序一致
+	sort.Slice(stats, func(i, j int) bool {
+		return stats[i].ManagementUnit < stats[j].ManagementUnit
+	})
+
 	return stats, summary
 }
 
@@ -467,41 +473,8 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 构建查询条件（与Handler中的逻辑完全一致）
-	whereSQL := " WHERE 1=1"
-	args := []interface{}{}
-
-	// 月份查询：根据时间字段按月份
-	// 如果建档状态为"已建档"（值为"2"），使用completed_at字段；否则使用update_time字段
-	if month != "" {
-		// 验证月份格式
-		if _, err := time.Parse("2006-01", month); err == nil {
-			parts := strings.Split(month, "-")
-			if len(parts) == 2 {
-				year, _ := strconv.Atoi(parts[0])
-				monthNum, _ := strconv.Atoi(parts[1])
-				// 如果建档状态为"已建档"（值为"2"），使用completed_at字段
-				if auditStatus == "2" {
-					whereSQL += " AND YEAR(completed_at) = ? AND MONTH(completed_at) = ?"
-				} else {
-					whereSQL += " AND YEAR(update_time) = ? AND MONTH(update_time) = ?"
-				}
-				args = append(args, year, monthNum)
-			}
-		}
-	}
-
-	// 建档状态查询
-	if auditStatus != "" {
-		statusInt, err := strconv.Atoi(auditStatus)
-		if err == nil && (statusInt == 0 || statusInt == 1 || statusInt == 2) {
-			whereSQL += " AND audit_status = ?"
-			args = append(args, statusInt)
-		}
-	}
-
-	// 获取统计数据（应用筛选条件）
-	stats, summary := getStatistics(whereSQL, args)
+	// 获取统计数据（应用筛选条件，与Handler中的逻辑完全一致）
+	stats, summary := getStatistics(month, auditStatus)
 
 	// 创建Excel文件
 	f := excelize.NewFile()

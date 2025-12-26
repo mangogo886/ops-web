@@ -323,6 +323,11 @@
             <input type="hidden" name="task_id" value="{{.Task.ID}}">
             
             <div class="form-group">
+                <label for="tag">标签</label>
+                <input type="text" id="tag" name="tag" value="{{if .Task.Tag.Valid}}{{.Task.Tag.String}}{{end}}" placeholder="选填，用于搜索区分" style="width: 300px;">
+            </div>
+            
+            <div class="form-group">
                 <label for="audit_status">审核状态 <span style="color: #e74c3c;">*</span></label>
                 <select id="audit_status" name="audit_status" required>
                     <option value="未审核" {{if eq .Task.AuditStatus "未审核"}}selected{{end}}>未审核</option>

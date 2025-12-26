@@ -718,7 +718,7 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 
 		var task AuditTask
 		var importTimeRaw sql.NullString
-		taskSQL := "SELECT id, file_name, organization, import_time, audit_status, audit_comment FROM audit_tasks WHERE id = ?"
+		taskSQL := "SELECT id, file_name, organization, import_time, audit_status, audit_comment, tag FROM audit_tasks WHERE id = ?"
 		err = db.DBInstance.QueryRow(taskSQL, taskID).Scan(
 			&task.ID,
 			&task.FileName,
@@ -726,6 +726,7 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 			&importTimeRaw,
 			&task.AuditStatus,
 			&task.AuditComment,
+			&task.Tag,
 		)
 		if err != nil {
 			if err == sql.ErrNoRows {
@@ -840,6 +841,7 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 
 		auditComment := strings.TrimSpace(r.FormValue("audit_comment"))
 		auditStatus := strings.TrimSpace(r.FormValue("audit_status"))
+		tag := strings.TrimSpace(r.FormValue("tag"))
 		isFixed := r.FormValue("is_fixed") == "1" // 是否勾选了"已整改"
 
 		// 验证审核状态
@@ -901,6 +903,7 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		updateSQL := `UPDATE audit_tasks 
 		              SET audit_comment = ?, 
 		                  audit_status = ?, 
+		                  tag = ?,
 		                  updated_at = NOW(),
 		                  completed_at = CASE 
 		                      WHEN ? = '已完成' AND completed_at IS NULL 
@@ -914,8 +917,15 @@ func EditCommentHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			comment = auditComment
 		}
+		
+		var tagValue interface{}
+		if tag == "" {
+			tagValue = nil
+		} else {
+			tagValue = tag
+		}
 
-		_, err = tx.Exec(updateSQL, comment, auditStatus, auditStatus, taskID)
+		_, err = tx.Exec(updateSQL, comment, auditStatus, tagValue, auditStatus, taskID)
 		if err != nil {
 			tx.Rollback()
 			http.Error(w, "更新审核意见失败: "+err.Error(), http.StatusInternalServerError)
@@ -2149,12 +2159,13 @@ func SampleHandler(w http.ResponseWriter, r *http.Request) {
 
 		// 查询任务信息
 		var task AuditTask
-		taskSQL := "SELECT id, file_name, organization, audit_status FROM audit_tasks WHERE id = ?"
+		taskSQL := "SELECT id, file_name, organization, audit_status, tag FROM audit_tasks WHERE id = ?"
 		err = db.DBInstance.QueryRow(taskSQL, taskID).Scan(
 			&task.ID,
 			&task.FileName,
 			&task.Organization,
 			&task.AuditStatus,
+			&task.Tag,
 		)
 		if err != nil {
 			if err == sql.ErrNoRows {
@@ -2299,6 +2310,7 @@ func SampleHandler(w http.ResponseWriter, r *http.Request) {
 
 		sampleComment := strings.TrimSpace(r.FormValue("sample_comment"))
 		sampleResult := strings.TrimSpace(r.FormValue("sample_result"))
+		tag := strings.TrimSpace(r.FormValue("tag"))
 
 		// 验证抽检结果
 		validResults := map[string]bool{
@@ -2308,6 +2320,20 @@ func SampleHandler(w http.ResponseWriter, r *http.Request) {
 		if sampleResult != "" && !validResults[sampleResult] {
 			http.Error(w, "无效的抽检结果", http.StatusBadRequest)
 			return
+		}
+
+		// 更新标签
+		var tagValue interface{}
+		if tag == "" {
+			tagValue = nil
+		} else {
+			tagValue = tag
+		}
+		updateTagSQL := "UPDATE audit_tasks SET tag = ? WHERE id = ?"
+		_, err = db.DBInstance.Exec(updateTagSQL, tagValue, taskID)
+		if err != nil {
+			logger.Errorf("更新标签失败: %v, taskID: %d", err, taskID)
+			// 不阻断流程，继续执行抽检保存
 		}
 
 		// 保存抽检记录

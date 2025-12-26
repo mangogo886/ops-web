@@ -343,6 +343,11 @@
             </div>
             
             <div class="form-group">
+                <label for="tag">标签</label>
+                <input type="text" id="tag" name="tag" value="{{if .Task.Tag.Valid}}{{.Task.Tag.String}}{{end}}" placeholder="选填，用于搜索区分" style="width: 300px;">
+            </div>
+            
+            <div class="form-group">
                 <label for="sample_result">抽检结果</label>
                 <select id="sample_result" name="sample_result">
                     <option value="">请选择</option>

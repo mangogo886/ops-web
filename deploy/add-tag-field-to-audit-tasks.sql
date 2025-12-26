@@ -5,3 +5,4 @@ ADD COLUMN tag VARCHAR(255) NULL COMMENT '标签字段，用于搜索区分' AFT
 -- 添加索引以优化搜索性能
 CREATE INDEX idx_tag ON audit_tasks(tag);
 
+
